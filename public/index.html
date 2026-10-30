@@ -1017,6 +1017,34 @@ body.wide #guide{display:flex}
   addEventListener('pointerup', release); addEventListener('pointercancel', release);
   shell.addEventListener('pointermove', (e) => { if (pressed && e.buttons && !pressed.contains(document.elementFromPoint(e.clientX, e.clientY))) release(); });
 
+  function kitHop(count, itemSvg, adding, done) {
+    const hop = count.parentElement && [...count.parentElement.children].find((n) => n.tagName === 'SPAN' && n !== count && n.querySelector('svg'));
+    const safe = count.parentElement && count.parentElement.querySelector('svg use[href="#gi-strongbox"]');
+    if (!hop) { done(); return; }
+    if (hop._anim) { hop._anim.cancel(); if (hop._done) hop._done(); }
+    const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (itemSvg) { const svg = itemSvg.cloneNode(true); svg.setAttribute('width', '18'); svg.setAttribute('height', '18'); hop.replaceChildren(svg); }
+    const hx = hop.offsetLeft + hop.offsetWidth / 2, hy = hop.offsetTop + hop.offsetHeight / 2;
+    const cx = count.offsetLeft + count.offsetWidth / 2, cy = count.offsetTop + count.offsetHeight / 2;
+    const dx = cx - hx, dy = cy - hy;
+    const into = [
+      { transform: 'translate(0,0) rotate(-12deg) scale(1)', opacity: 1, offset: 0 },
+      { transform: 'translate(2px,4px) rotate(-12deg) scale(1.05,.9)', opacity: 1, offset: 0.12 },
+      { transform: 'translate(' + dx * 0.25 + 'px,-34px) rotate(-30deg) scale(1.1)', opacity: 1, offset: 0.42 },
+      { transform: 'translate(' + dx * 0.8 + 'px,' + dy * 0.6 + 'px) rotate(10deg) scale(.7)', opacity: 1, offset: 0.78 },
+      { transform: 'translate(' + dx + 'px,' + dy + 'px) rotate(20deg) scale(.3)', opacity: 0, offset: 1 }
+    ];
+    const finish = () => {
+      hop._anim = null; hop._done = null; done();
+      if (safe) safe.parentElement.animate([{ transform: 'rotate(0)' }, { transform: 'rotate(-4deg) translateY(2px)' }, { transform: 'rotate(3deg)' }, { transform: 'rotate(0)' }], { duration: 320, easing: 'ease-out' });
+      // a fresh icon pops back in at the top of the trail, ready for the next item
+      hop.animate([{ transform: 'rotate(-12deg) scale(0)', opacity: 0 }, { transform: 'rotate(-12deg) scale(1.15)', opacity: 1 }, { transform: 'rotate(-12deg) scale(1)', opacity: 1 }], { duration: reduce ? 1 : 320, delay: reduce ? 0 : 180, easing: 'ease-out', fill: 'backwards' });
+    };
+    if (!adding) { done(); hop.animate(into.slice().reverse().map((f, i, a) => Object.assign({}, f, { offset: 1 - f.offset, opacity: i === 0 ? 0 : 1 })), { duration: reduce ? 1 : 520, easing: 'cubic-bezier(.3,.6,.4,1)' }); return; }
+    hop._done = finish;
+    hop._anim = hop.animate(into, { duration: reduce ? 1 : 640, easing: 'cubic-bezier(.4,0,.6,1)' });
+    hop._anim.onfinish = finish;
+  }
   function kitFly(root, iconEl, target, adding, done) {
     const R = root.getBoundingClientRect(), z = (R.width || 390) / 390;
     const a = iconEl.getBoundingClientRect(), t = target.getBoundingClientRect();
@@ -1080,8 +1108,9 @@ body.wide #guide{display:flex}
         const n = Object.keys(S.kit).length, adding = b.getAttribute('aria-pressed') === 'true';
         const bump = () => { if (!count) return; count.textContent = String(n); count.classList.remove('pk-bump'); void count.offsetWidth; count.classList.add('pk-bump'); };
         // the item swooshes into the counter, then the number goes up (or flies back out when you untick it)
-        if (count) kitFly(root, b.firstElementChild, count, adding, adding ? bump : null);
-        if (!adding) bump();
+        // the little icon above the safe turns into what you ticked, hops along its dotted trail into the number, then the count goes up
+        if (count) kitHop(count, b.firstElementChild.querySelector('svg'), adding, bump);
+        else bump();
         readyFX(root, n > 0);
       }));
     },
