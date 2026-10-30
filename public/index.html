@@ -198,8 +198,16 @@ body.wide.app-dark #shell{box-shadow:0 0 0 10px #2C2925,0 24px 60px rgba(0,0,0,.
   #frame a[data-go]:not(.mv-world a):hover,#frame button:not([disabled]):hover,#frame .me-stat:hover{filter:brightness(1.04);translate:0 -2px;transition:translate .15s,filter .15s}
   #frame a[data-go]:not(.mv-world a):active,#frame button:active{translate:0 1px}
 }
-.press{scale:.94!important;transition:scale .08s ease-out!important}
-.unpress{transition:scale .22s cubic-bezier(.3,1.8,.5,1)!important}
+.press{scale:.95!important;filter:brightness(.84) saturate(1.08)!important;transition:scale .07s ease-out,filter .07s ease-out,translate .07s ease-out,box-shadow .07s ease-out!important}
+.unpress{transition:scale .22s cubic-bezier(.3,1.8,.5,1),filter .2s,translate .2s,box-shadow .2s!important}
+html,body{overscroll-behavior:none}
+#frame{overscroll-behavior:contain}
+[data-pin]{transition:box-shadow .15s}
+#shell[data-scrolled] [data-pin]{box-shadow:0 6px 10px -6px rgba(0,0,0,.28)}
+#rail{position:absolute;right:3px;top:0;width:5px;pointer-events:none;z-index:30;opacity:0;transition:opacity .3s}
+#rail i{position:absolute;left:0;right:0;border-radius:99px;background:var(--ink);opacity:.32}
+#rail.on{opacity:1}
+#rail.live i{opacity:.62}
 #hx{position:fixed;left:-9999px;top:0;opacity:0;pointer-events:none}
 .dm{display:flex;flex-direction:column;min-height:100%;background:var(--bg)}
 .dm-map{position:relative;height:420px;margin-top:6px;overflow:hidden;background-color:var(--mp-bg);background-image:linear-gradient(var(--mp-grid) 1px,transparent 1px),linear-gradient(90deg,var(--mp-grid) 1px,transparent 1px);background-size:52px 52px}
@@ -238,7 +246,8 @@ body.wide #guide{display:flex}
 
 <div id="shell" aria-live="polite">
   <div id="frame"></div>
-  <div id="layer"></div>
+  <div id="rail" aria-hidden="true"><i></i></div>
+<div id="layer"></div>
 </div>
 
 <aside id="guide" aria-label="Demo guide">
@@ -574,7 +583,7 @@ body.wide #guide{display:flex}
   // ---------- living map: drag to explore, things bob and drift (added; inspired by game maps)
   function liveMap(root) {
     if (!root) return;
-    root.style.height = Math.max(844, frame.clientHeight) + 'px';
+    root.style.height = frame.clientHeight + 'px';
     frame.scrollTop = 0;
     const fixed = (n) => n.tagName === 'NAV' || /bottom:\s*\d/.test(n.getAttribute('style') || '') ||
       n.matches('a[aria-label="Your profile and settings"], button[aria-label^="Show quests"], .fog') || (n.tagName === 'svg' && n.getAttribute('width') === '0');
@@ -837,12 +846,45 @@ body.wide #guide{display:flex}
     const want = Math.ceil(Math.max(H, max + 28 + bar));
     if (want < cur) root.style.height = want + 'px';
   }
+  // Scrolling like a game/app: the header stays pinned, only the content moves, and a slim rail shows where you are (added)
+  const rail = document.getElementById('rail'), railThumb = rail.firstElementChild;
+  let railTimer;
+  function updateRail(live) {
+    const H = frame.clientHeight, T = frame.scrollHeight;
+    if (frame.style.overflowY === 'hidden' || T <= H + 8) { rail.classList.remove('on'); return; }
+    const top = 64, bottom = 96, track = Math.max(40, H - top - bottom), th = Math.max(28, track * H / T);
+    rail.style.top = top + 'px'; rail.style.height = track + 'px';
+    railThumb.style.height = th + 'px'; railThumb.style.top = ((track - th) * frame.scrollTop / (T - H)) + 'px';
+    rail.classList.add('on'); rail.classList.toggle('live', !!live);
+    if (live) { clearTimeout(railTimer); railTimer = setTimeout(() => rail.classList.remove('live'), 700); }
+    if (frame.scrollTop > 4) shell.setAttribute('data-scrolled', ''); else shell.removeAttribute('data-scrolled');
+  }
+  frame.addEventListener('scroll', () => updateRail(true), { passive: true });
+  function pinChrome(root) {
+    frame.style.overflowY = ''; shell.removeAttribute('data-scrolled');
+    if (!root) { updateRail(); return; }
+    if (root.querySelector('.mv-world')) {
+      // the map is a canvas you drag, so the page itself never scrolls
+      root.style.height = frame.clientHeight + 'px'; root.style.overflow = 'hidden'; frame.style.overflowY = 'hidden'; frame.scrollTop = 0;
+      updateRail(); return;
+    }
+    if (frame.scrollHeight > frame.clientHeight + 4) {
+      const head = [...root.children].find((n) => !/^(svg|style|script)$/i.test(n.tagName) && n.offsetHeight > 0);
+      if (head && getComputedStyle(head).position !== 'absolute' && head.offsetHeight <= 140 && head.querySelector('a,button')) {
+        const bg = getComputedStyle(root).backgroundColor, solid = bg && !/rgba\(0, 0, 0, 0\)|transparent/.test(bg) ? bg : 'var(--bg)';
+        root.style.overflow = 'visible';
+        head.setAttribute('data-pin', ''); head.style.position = 'sticky'; head.style.top = '0'; head.style.zIndex = '5'; head.style.background = solid;
+      }
+    }
+    updateRail();
+  }
   function go(id) {
-    if (id === 'Banks') { renderBanks(); return; }
-    if (id === 'Inventory') { renderInventory(); return; }
-    if (id === 'Me') { renderMe(); return; }
-    if (id === 'DemoMap') { renderDemoMap(); return; }
-    if (/^Info:/.test(id)) { renderInfo(id.slice(5)); return; }
+    const custom = (fn) => { fn(); pinChrome(frame.firstElementChild); };
+    if (id === 'Banks') { custom(renderBanks); return; }
+    if (id === 'Inventory') { custom(renderInventory); return; }
+    if (id === 'Me') { custom(renderMe); return; }
+    if (id === 'DemoMap') { custom(renderDemoMap); return; }
+    if (/^Info:/.test(id)) { custom(() => renderInfo(id.slice(5))); return; }
     id = route(id);
     if (!SCREENS[id]) return;
     closeLayer();
@@ -855,6 +897,7 @@ body.wide #guide{display:flex}
     (SETUP[id] || SETUP[base(id)] || (() => {}))(root);
     wireInfoRows(root);
     trimHeight(root);
+    pinChrome(root);
   }
 
   function applyTheme() {
@@ -876,7 +919,7 @@ body.wide #guide{display:flex}
     shell.style.zoom = String(s);
     shell.style.height = (wide ? Math.min(h - 48, 844) : h) / s + 'px';
   }
-  addEventListener('resize', fit);
+  addEventListener('resize', () => { fit(); updateRail(); });
 
   // ---------- layer: toasts and sheets
   let toastTimer;
@@ -1149,12 +1192,17 @@ body.wide #guide{display:flex}
     const el = e.target.closest(PRESSABLE);
     if (!el || el.disabled || !shell.contains(el)) return;
     pressed = el; el.classList.remove('unpress'); el.classList.add('press');
+    // chunky buttons: the face sinks into its hard bottom shadow, like a physical key
+    const m = getComputedStyle(el).boxShadow.match(/^(rgba?\([^)]*\))\s+0px\s+(\d+(?:\.\d+)?)px\s+0px\s+0px$/);
+    el._ps = null;
+    if (m && +m[2] >= 2) { el._ps = [el.style.boxShadow, el.style.translate]; el.style.boxShadow = m[1] + ' 0px 1px 0px 0px'; el.style.translate = '0 ' + (m[2] - 1) + 'px'; }
     haptic();
   });
   const release = () => {
     if (!pressed) return;
     const el = pressed; pressed = null;
     el.classList.remove('press'); el.classList.add('unpress');
+    if (el._ps) { el.style.boxShadow = el._ps[0]; el.style.translate = el._ps[1]; el._ps = null; }
     setTimeout(() => el.classList.remove('unpress'), 260);
   };
   addEventListener('pointerup', release); addEventListener('pointercancel', release);
