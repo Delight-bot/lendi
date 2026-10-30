@@ -196,6 +196,9 @@ body.wide.app-dark #shell{box-shadow:0 0 0 10px #2C2925,0 24px 60px rgba(0,0,0,.
   #frame a[data-go]:not(.mv-world a):hover,#frame button:not([disabled]):hover,#frame .me-stat:hover{filter:brightness(1.04);translate:0 -2px;transition:translate .15s,filter .15s}
   #frame a[data-go]:not(.mv-world a):active,#frame button:active{translate:0 1px}
 }
+.press{scale:.94!important;transition:scale .08s ease-out!important}
+.unpress{transition:scale .22s cubic-bezier(.3,1.8,.5,1)!important}
+#hx{position:fixed;left:-9999px;top:0;opacity:0;pointer-events:none}
 .tap-row{cursor:pointer;border-radius:12px}
 .tap-row:hover{background:var(--s2)}
 
@@ -954,7 +957,6 @@ body.wide #guide{display:flex}
   function tapFX(el) {
     if (!el) return;
     el.classList.remove('pk-pop'); void el.offsetWidth; el.classList.add('pk-pop');
-    try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) {}
     if (S.sound === false) return;
     try {
       audio = audio || new (window.AudioContext || window.webkitAudioContext)();
@@ -970,6 +972,30 @@ body.wide #guide{display:flex}
     const next = byText(root, 'a', /^\s*Next\s*$/);
     if (next) next.classList.toggle('pk-ready', !!on);
   }
+
+  // Every tap: the thing you pressed shrinks a little and the phone gives a tiny buzz (added)
+  const hx = document.createElement('label'); hx.id = 'hx'; hx.setAttribute('aria-hidden', 'true');
+  hx.innerHTML = '<input type="checkbox" switch tabindex="-1">'; document.body.appendChild(hx);
+  function haptic() {
+    try { if (navigator.vibrate) { navigator.vibrate(10); return; } } catch (e) {}
+    try { hx.click(); } catch (e) {} // iPhone Safari: a hidden switch toggle gives a light haptic tick on iOS 18+
+  }
+  const PRESSABLE = '[data-go],[data-toast],a[href],button,[role="link"],.tap-row,.me-row';
+  let pressed = null;
+  shell.addEventListener('pointerdown', (e) => {
+    const el = e.target.closest(PRESSABLE);
+    if (!el || el.disabled || !shell.contains(el)) return;
+    pressed = el; el.classList.remove('unpress'); el.classList.add('press');
+    haptic();
+  });
+  const release = () => {
+    if (!pressed) return;
+    const el = pressed; pressed = null;
+    el.classList.remove('press'); el.classList.add('unpress');
+    setTimeout(() => el.classList.remove('unpress'), 260);
+  };
+  addEventListener('pointerup', release); addEventListener('pointercancel', release);
+  shell.addEventListener('pointermove', (e) => { if (pressed && e.buttons && !pressed.contains(document.elementFromPoint(e.clientX, e.clientY))) release(); });
 
   // ---------- per-screen wiring
   const SETUP = {
