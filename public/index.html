@@ -25,6 +25,8 @@ body{background:var(--page);color:var(--page-ink);font-family:var(--body);displa
 
 /* in-app tokens for sheets, toasts and added pieces, matched to the team's palette */
 #shell{--ink:#16302C;--ink2:#4A5D59;--bg:#FFFFFF;--s2:#F1F3F2;--line:#E3DFD4;--pri:#CF4520;--onpri:#FFFFFF;--lip:#9E3418;--ok:#2E9E4F;--okbg:#DCEBDF;--okink:#1F5E30;--warnbg:#FBE3DA;--warnink:#A8361A;--gold:#F2B63D;--scrim:rgba(18,24,28,.55)}
+#shell{--mp-bg:#F4EEDF;--mp-land:#EAD9B6;--mp-green:#CFE3D2;--mp-line:#9C7B55;--mp-grid:rgba(122,90,58,.08)}
+#shell.dark{--mp-bg:#25211D;--mp-land:#352E26;--mp-green:#26352B;--mp-line:#6B5A44;--mp-grid:rgba(255,255,255,.04)}
 #shell.dark{--ink:#F2EEE8;--ink2:#BCB6AD;--bg:#1A1816;--s2:#23201D;--line:#3A3631;--pri:#FF6A45;--onpri:#1A0805;--lip:#9A3216;--ok:#4FB06B;--okbg:#1E2723;--okink:#9FE0B2;--warnbg:#3A1F16;--warnink:#FFB59E;--gold:#FFC85A;--scrim:rgba(0,0,0,.66)}
 
 #shell{position:relative;width:390px;flex-shrink:0;border-radius:0;overflow:hidden;background:var(--bg);font-family:var(--body);color:var(--ink)}
@@ -199,6 +201,23 @@ body.wide.app-dark #shell{box-shadow:0 0 0 10px #2C2925,0 24px 60px rgba(0,0,0,.
 .press{scale:.94!important;transition:scale .08s ease-out!important}
 .unpress{transition:scale .22s cubic-bezier(.3,1.8,.5,1)!important}
 #hx{position:fixed;left:-9999px;top:0;opacity:0;pointer-events:none}
+.dm{display:flex;flex-direction:column;min-height:100%;background:var(--bg)}
+.dm-map{position:relative;height:420px;margin-top:6px;overflow:hidden;background-color:var(--mp-bg);background-image:linear-gradient(var(--mp-grid) 1px,transparent 1px),linear-gradient(90deg,var(--mp-grid) 1px,transparent 1px);background-size:52px 52px}
+.dm-map svg.bgm{position:absolute;left:0;top:0}
+.dm-pin{position:absolute;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:99px;box-sizing:border-box;background:#FFFDF7;border:3px solid #16302C;box-shadow:0 4px 0 rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;padding:0;transition:scale .2s cubic-bezier(.3,1.6,.5,1);animation:dmDrop .55s cubic-bezier(.3,1.5,.5,1) both}
+.dm-pin.sel{scale:1.3;border-width:4px;box-shadow:0 0 0 5px #CF4520,0 8px 0 5px #9E3418;z-index:3}
+.dm-lbl{position:absolute;transform:translateX(-50%);padding:2px 8px;border-radius:99px;background:rgba(255,253,247,.94);color:#16302C;font-size:11.5px;font-weight:800;white-space:nowrap;pointer-events:none}
+.dm-you{position:absolute;width:38px;height:38px;margin:-19px 0 0 -19px;border-radius:99px;background:#CFE3D2;border:3px solid #FFFDF7;box-shadow:0 2px 6px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;color:#16302C}
+.dm-route{fill:none;stroke:#CF4520;stroke-width:3.5;stroke-linecap:round;stroke-dasharray:.1 9;animation:mvMarch .9s linear infinite}
+.dm-card{margin:-24px 0 0;position:relative;background:var(--bg);border-radius:24px 24px 0 0;box-shadow:0 -4px 16px rgba(0,0,0,.14);padding:16px 20px 26px;display:flex;flex-direction:column;gap:10px;flex:1}
+.dm-card .bk-name strong{font-size:22px}
+@keyframes dmDrop{from{opacity:0;translate:0 -26px}}
+.info-li{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:2px solid var(--line);font-weight:700;line-height:1.4}
+.info-li:first-of-type{border-top:0}
+.info-li i{flex-shrink:0;width:26px;height:26px;border-radius:99px;background:var(--s2);border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font:800 13px var(--display);font-style:normal;margin-top:1px}
+.info-li.warn i{background:var(--warnbg);border-color:transparent;color:var(--warnink)}
+.info-src{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;border-top:2px solid var(--line);font-weight:800;color:var(--ink);text-decoration:none}
+.info-src small{display:block;color:var(--okink);font-weight:800;font-size:12px}
 .tap-row{cursor:pointer;border-radius:12px}
 .tap-row:hover{background:var(--s2)}
 
@@ -450,7 +469,7 @@ body.wide #guide{display:flex}
         '<div class="bk-addr">' + esc(b.branch) + ' · ' + esc(b.address) + (b.phone ? ' · ' + esc(b.phone) : '') + '</div>' +
         '<div class="bk-tags">' + tags + '</div>' +
         '<div class="bk-src">Source: <a href="' + b.source.url + '" target="_blank" rel="noopener">' + esc(b.source.label) + '</a></div>' +
-        '<div class="bk-act"><a href="' + mapsUrl(b) + '" target="_blank" rel="noopener">' + PIN_ICON + 'Directions</a>' +
+        '<div class="bk-act"><a href="#" data-map="' + b.id + '">' + PIN_ICON + 'Directions</a>' +
         '<button type="button" data-pick="' + b.id + '" aria-pressed="' + sel + '">' + (sel ? '✓ Picked' : 'Pick this bank') + '</button></div>' +
         '</section>';
     }).join('');
@@ -465,6 +484,7 @@ body.wide #guide{display:flex}
       '</div>';
     frame.scrollTop = 0;
     frame.querySelector('[data-back]').addEventListener('click', () => go(banksBack));
+    frame.querySelectorAll('[data-map]').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); renderDemoMap(a.dataset.map); }));
     frame.querySelectorAll('[data-pick]').forEach((btn) => btn.addEventListener('click', () => {
       S.bank = S.bank === btn.dataset.pick ? null : btn.dataset.pick; save();
       const y = frame.scrollTop; renderBanks(); frame.scrollTop = y;
@@ -685,6 +705,110 @@ body.wide #guide{display:flex}
     frame.querySelector('#me-sound').addEventListener('click', () => { S.sound = S.sound === false; save(); renderMe(); });
   }
 
+  // Added screen: a demo map for "Directions" (illustrative, not to scale; real directions open in Google Maps)
+  let mapBack = 'Banks', mapSel = null, infoBack = 'Map-Home';
+  const MAP_POS = { campus: [66, 318], chase: [262, 218], origin: [316, 150], regions: [214, 140] };
+  function renderDemoMap(sel) {
+    closeLayer();
+    if (S.screen !== 'DemoMap') mapBack = S.screen || 'Banks';
+    S.screen = 'DemoMap'; save();
+    mapSel = sel || mapSel || S.bank || 'chase';
+    const defs = (SCREENS['Map-Home'].light.match(/<svg width="0"[\s\S]*?<\/svg>/) || [''])[0];
+    const PERSON = '<svg width="20" height="20" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M230.92,212c-15.23-26.33-38.7-45.21-66.09-54.16a72,72,0,1,0-73.66,0C63.78,166.78,40.31,185.66,25.08,212a8,8,0,1,0,13.85,8c18.84-32.56,52.14-52,89.07-52s70.23,19.44,89.07,52a8,8,0,1,0,13.85-8ZM72,96a56,56,0,1,1,56,56A56.06,56.06,0,0,1,72,96Z"/></svg>';
+    const bg = '<svg class="bgm" width="390" height="420" viewBox="0 0 390 420" aria-hidden="true">' +
+      '<path d="M-10 36 C60 0 150 34 232 12 C318 -8 402 30 410 96 L410 390 C330 424 232 396 150 418 C70 430 0 404 -10 384Z" style="fill:var(--mp-land);stroke:var(--mp-line);stroke-opacity:.5" stroke-width="2"/>' +
+      '<path d="M-10 214 C60 244 112 196 172 238 C232 278 306 256 410 308" fill="none" stroke="#1F7A6B" stroke-width="5" stroke-linecap="round" stroke-opacity=".6"/>' +
+      '<ellipse cx="150" cy="330" rx="62" ry="38" style="fill:var(--mp-green)"/><ellipse cx="330" cy="62" rx="56" ry="30" style="fill:var(--mp-green)"/><ellipse cx="96" cy="120" rx="48" ry="30" style="fill:var(--mp-green)"/>' +
+      '<use href="#gi-forest" x="122" y="302" width="54" height="54" fill="#3E7A4A"/><use href="#gi-pine-tree" x="84" y="104" width="22" height="22" fill="#3E7A4A"/><use href="#gi-pine-tree" x="104" y="116" width="18" height="18" fill="#3E7A4A"/>' +
+      '<use href="#gi-windmill" x="340" y="330" width="32" height="32" fill="currentColor" opacity=".8"/><use href="#gi-galleon" x="14" y="150" width="44" height="44" fill="#1F7A6B" opacity=".9"/>' +
+      '</svg>';
+    const draw = () => {
+      const b = BANKS.find((x) => x.id === mapSel) || BANKS[0];
+      const [cx, cy] = MAP_POS.campus, [bx, by] = MAP_POS[b.id];
+      const route = '<svg class="bgm" width="390" height="420" viewBox="0 0 390 420" aria-hidden="true"><path d="M' + cx + ' ' + cy + ' C' + (cx + 110) + ' ' + (cy - 20) + ' ' + (bx - 120) + ' ' + (by + 90) + ' ' + bx + ' ' + by + '" fill="none" stroke="var(--mp-line)" stroke-opacity=".5" stroke-width="2" stroke-dasharray="5 5"/>' +
+        '<path class="dm-route" d="M' + cx + ' ' + cy + ' C' + (cx + 110) + ' ' + (cy - 20) + ' ' + (bx - 120) + ' ' + (by + 90) + ' ' + bx + ' ' + by + '"/></svg>';
+      const pins = BANKS.map((x, i) => {
+        const [px, py] = MAP_POS[x.id];
+        return '<button type="button" class="dm-pin' + (x.id === mapSel ? ' sel' : '') + '" data-bank="' + x.id + '" aria-label="' + esc(x.name) + '" style="left:' + px + 'px;top:' + py + 'px;animation-delay:' + (i * 120) + 'ms"><svg width="28" height="28" aria-hidden="true"><use href="#gi-bank" fill="#CF4520"/></svg></button>' +
+          '<span class="dm-lbl" style="left:' + px + 'px;top:' + (py + (x.id === mapSel ? 46 : 28)) + 'px">' + esc(x.name) + '</span>';
+      }).join('');
+      frame.querySelector('#dm-layer').innerHTML = route + pins +
+        '<span class="dm-you" style="left:' + cx + 'px;top:' + cy + 'px" aria-label="You are here">' + PERSON + '</span>' +
+        '<span class="dm-lbl" style="left:' + cx + 'px;top:' + (cy + 28) + 'px">Grambling State</span>';
+      const picked = S.bank === b.id;
+      frame.querySelector('#dm-card').innerHTML =
+        '<div class="bk-name"><strong>' + esc(b.name) + '</strong><span>' + esc(b.dist) + '</span></div>' +
+        '<div class="bk-addr">' + esc(b.branch) + ' · ' + esc(b.address) + '</div>' +
+        '<div class="bk-act"><a href="' + mapsUrl(b) + '" target="_blank" rel="noopener">' + PIN_ICON + 'Google Maps</a>' +
+        '<button type="button" id="dm-pick">' + (picked ? '✓ Picked' : 'Pick this bank') + '</button></div>' +
+        '<p class="bk-foot" style="margin:2px 0 0">Demo map. Drawn for illustration, not to scale. Google Maps opens real directions.</p>';
+      frame.querySelectorAll('[data-bank]').forEach((n) => n.addEventListener('click', () => { mapSel = n.dataset.bank; draw(); }));
+      frame.querySelector('#dm-pick').addEventListener('click', () => { S.bank = b.id; save(); go(mapBack); toast(b.name + ' is now your bank for this quest.'); });
+    };
+    frame.innerHTML = '<div class="dm" data-screen="DemoMap">' + defs +
+      '<div class="bk-top"><button class="bk-back" type="button" data-back aria-label="Back">' + BACK_ICON + '</button>Banks near campus</div>' +
+      '<div class="dm-map">' + bg + '<div id="dm-layer"></div></div><div class="dm-card" id="dm-card"></div></div>';
+    frame.scrollTop = 0;
+    frame.querySelector('[data-back]').addEventListener('click', () => go(mapBack));
+    draw();
+  }
+
+  // Added screens: the quests' last step ("Know the fees. Dodge the scams." / "Know your backup rides. Stay safe.")
+  const INFO = {
+    scams: {
+      title: 'Know the fees. Dodge the scams.', sub: 'Two minutes that can save you real money.', back: 'VP-12-Grapevine',
+      sections: [
+        { h: 'Ask about fees first', items: [['1', 'Is there a monthly fee, and what removes it?'], ['2', 'Is there a minimum balance?'], ['3', 'What does an overdraft cost?'], ['4', 'Are there fees at other banks’ ATMs?']] },
+        { h: 'Scams aimed at international students', items: [
+          ['!', 'A caller says they are immigration or another federal agency, knows your school, and says you owe money or will be arrested or deported. Hang up. The FTC says the federal government does not make these calls, threats or payment demands.', 'warn'],
+          ['!', 'Anyone who asks you to pay with gift cards or cryptocurrency is running a scam.', 'warn'],
+          ['!', 'Never share your PIN, password or full card number with anyone, including in the Grapevine.', 'warn']] },
+        { h: 'Not sure?', items: [['•', 'Talk to someone you trust, like a school official or local police, before you pay anything.'], ['•', 'Worried about your visa? The FTC lists USCIS at 800-375-5283. Report scam calls at FTC.gov/Complaint.']] }
+      ],
+      sources: [{ label: 'FTC: scammers go after international students’ money', url: 'https://www.consumer.ftc.gov/consumer-alerts/2019/02/scammers-go-after-international-students-money' }]
+    },
+    rides: {
+      title: 'Know your backup rides. Stay safe.', sub: 'For days the campus shuttle isn’t running.', back: 'T-VP-12-Grapevine',
+      sections: [
+        { h: 'Campus shuttle', items: [['1', 'Runs Tuesday, Wednesday and Thursday only. GSU’s page lists the times as tentative.'], ['2', 'Call the Office of Transportation at (318) 274-2079 to check a day.']] },
+        { h: 'Lincoln Parish Public Transit', items: [
+          ['1', 'Open to the general public in Lincoln Parish. Reservations are required.'],
+          ['2', 'Call (318) 251-5138. For cash-fare rides, book by 12 pm the day before.'],
+          ['3', 'Rides run Monday to Friday, 4 am to 5 pm. The office is open 7:30 am to 4:30 pm.'],
+          ['•', 'The parish site also lists (318) 251-5136 for the H.E.L.P. Agency, so confirm which number to call.']] },
+        { h: 'Stay safe', items: [['!', 'Book only through the forms and phone numbers on gram.edu and lincolnparish.gov.', 'warn'], ['!', 'Never pay for a ride with gift cards or cryptocurrency.', 'warn']] }
+      ],
+      sources: [{ label: 'Grambling State: shuttle times and stops', url: 'https://gram.edu/student-life/services/transportation/services.php' }, { label: 'Lincoln Parish: public transit', url: 'https://www.lincolnparish.gov/node/2939' }]
+    }
+  };
+  function renderInfo(key) {
+    const d = INFO[key]; if (!d) return;
+    closeLayer();
+    if (!/^Info:/.test(S.screen)) infoBack = S.screen || 'Map-Home';
+    S.screen = 'Info:' + key; save();
+    const EXT = '<svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M224,104a8,8,0,0,1-16,0V59.32l-66.33,66.34a8,8,0,0,1-11.32-11.32L196.68,48H152a8,8,0,0,1,0-16h64a8,8,0,0,1,8,8Zm-40,24a8,8,0,0,0-8,8v72H48V80h72a8,8,0,0,0,0-16H48A16,16,0,0,0,32,80V208a16,16,0,0,0,16,16H176a16,16,0,0,0,16-16V136A8,8,0,0,0,184,128Z"/></svg>';
+    frame.innerHTML = '<div class="bk" data-screen="Info:' + key + '">' +
+      '<div class="bk-top"><button class="bk-back" type="button" data-back aria-label="Back">' + BACK_ICON + '</button></div>' +
+      '<div class="bk-head"><h1>' + esc(d.title) + '</h1><p>' + esc(d.sub) + '</p></div>' +
+      d.sections.map((sec) => '<section class="me-sec"><h2>' + esc(sec.h) + '</h2>' +
+        sec.items.map(([n, t, k]) => '<div class="info-li' + (k ? ' ' + k : '') + '"><i>' + esc(n) + '</i><span>' + esc(t) + '</span></div>').join('') + '</section>').join('') +
+      '<section class="me-sec"><h2>Official sources</h2>' + d.sources.map((x) => '<a class="info-src" href="' + x.url + '" target="_blank" rel="noopener"><span>' + esc(x.label) + '<small>Checked Oct 2026</small></span>' + EXT + '</a>').join('') + '</section>' +
+      '<div style="margin:22px 20px 32px;display:grid;gap:10px"><button class="btn" type="button" data-go="' + d.back + '">Ask someone who’s done this</button><button class="btn ghost" type="button" data-back2>Back</button></div></div>';
+    frame.scrollTop = 0;
+    frame.querySelector('[data-back]').addEventListener('click', () => go(infoBack));
+    frame.querySelector('[data-back2]').addEventListener('click', () => go(infoBack));
+  }
+  // rows on the quest pages that open those screens
+  function wireInfoRows(root) {
+    if (!root) return;
+    const T = isT(S.screen), re = T ? /backup rides/i : /dodge the scams/i, key = T ? 'Info:rides' : 'Info:scams';
+    [byText(root, 'li', re), byText(root, 'a', re)].forEach((n) => {
+      if (!n || n.children.length > 4) return;
+      n.dataset.go = key; n.classList.add('tap-row'); n.setAttribute('role', 'link'); n.tabIndex = 0;
+      n.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(key); });
+    });
+  }
+
   function route(id) {
     if (id === 'Map-Home' && S.cleared) return 'Map-Cleared';
     if (id === 'VP-05-Quest' && S.cleared) return 'VP-17-Cleared';
@@ -717,6 +841,8 @@ body.wide #guide{display:flex}
     if (id === 'Banks') { renderBanks(); return; }
     if (id === 'Inventory') { renderInventory(); return; }
     if (id === 'Me') { renderMe(); return; }
+    if (id === 'DemoMap') { renderDemoMap(); return; }
+    if (/^Info:/.test(id)) { renderInfo(id.slice(5)); return; }
     id = route(id);
     if (!SCREENS[id]) return;
     closeLayer();
@@ -727,6 +853,7 @@ body.wide #guide{display:flex}
     const root = frame.firstElementChild;
     if (root) root.setAttribute('data-screen', id);
     (SETUP[id] || SETUP[base(id)] || (() => {}))(root);
+    wireInfoRows(root);
     trimHeight(root);
   }
 
@@ -1008,13 +1135,13 @@ body.wide #guide{display:flex}
   let buzzed = false;
   function haptic() {
     buzzed = false;
-    try { if (navigator.vibrate) { buzzed = navigator.vibrate(30); return; } } catch (e) {}
+    try { if (navigator.vibrate) { buzzed = navigator.vibrate(40); return; } } catch (e) {}
     try { hx.click(); buzzed = true; } catch (e) {} // iPhone Safari: a hidden switch toggle gives a light haptic tick on iOS 18+
   }
   // Android only allows vibration after a real tap, so if the press-down buzz was blocked, buzz on the tap itself
   shell.addEventListener('click', (e) => {
     if (buzzed || !e.target.closest(PRESSABLE)) return;
-    try { if (navigator.vibrate) buzzed = navigator.vibrate(30); } catch (err) {}
+    try { if (navigator.vibrate) buzzed = navigator.vibrate(40); } catch (err) {}
   }, true);
   const PRESSABLE = '[data-go],[data-toast],a[href],button,[role="link"],.tap-row,.me-row';
   let pressed = null;
@@ -1247,12 +1374,7 @@ body.wide #guide{display:flex}
       }
       const b = chosenBank();
       const dir = byText(root, 'button', /directions/i);
-      if (dir && b) {
-        const a = document.createElement('a');
-        a.href = mapsUrl(b); a.target = '_blank'; a.rel = 'noopener';
-        a.setAttribute('style', dir.getAttribute('style') || ''); a.style.textDecoration = 'none';
-        a.innerHTML = dir.innerHTML; dir.replaceWith(a);
-      }
+      if (dir) dir.dataset.go = 'DemoMap';
       if (!b) {
         const card = byText(root, 'span', /Your bank, nearest branch/);
         if (card) { card.style.cursor = 'pointer'; card.dataset.go = 'Banks'; banksBack = 'VP-08-Step'; card.textContent = 'Pick your bank ›'; }
@@ -1454,7 +1576,7 @@ body.wide #guide{display:flex}
 
   applyTheme();
   fit();
-  go(SCREENS[S.screen] || S.screen === 'Banks' || S.screen === 'Inventory' || S.screen === 'Me' ? S.screen : 'VP-01-Intro');
+  go(SCREENS[S.screen] || S.screen === 'Banks' || S.screen === 'Inventory' || S.screen === 'Me' ? S.screen : /^Info:|^DemoMap/.test(S.screen) ? 'Map-Home' : 'VP-01-Intro');
 })();
 </script>
 
