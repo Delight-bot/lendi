@@ -1,6 +1,6 @@
 # Lendi demo site
 
-Working demo of the Banking & Payments quest, with live AI. Runs on Cloudflare Workers.
+Working demo of the Banking & Payments and Transportation quests, with live AI. Runs on Cloudflare Workers.
 
 ```
 public/index.html   the whole app (screens, logic, styles)

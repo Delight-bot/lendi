@@ -12,6 +12,22 @@ const BANKS = [
 
 function prompts(body) {
   const clip = (s, n) => String(s || '').slice(0, n);
+  if (body.task === 'match' && body.quest === 'transport') {
+    return {
+      json: true,
+      prompt:
+        'You help international students at Grambling State University who get stuck getting around without a car. ' +
+        'Classify the student\'s message into exactly one known problem, or "none" if it fits none of them:\n' +
+        '- missed: they missed the campus shuttle or it left without them\n' +
+        '- noid: they do not have their GSU student ID yet, or it was not accepted\n' +
+        '- notrunning: the shuttle is not running on the day they need it\n' +
+        '- card: Uber, Lyft or another ride app will not accept their card or payment\n' +
+        '- airport: they need a ride to or from an airport\n' +
+        'Reply with only JSON like {"match":"missed","summary":"You missed the campus shuttle"}. ' +
+        'summary restates their problem in under 12 words, addressed to them. Give no advice.\n\n' +
+        'Student\'s message: """' + clip(body.text, 600) + '"""'
+    };
+  }
   if (body.task === 'match') {
     return {
       json: true,
@@ -32,7 +48,7 @@ function prompts(body) {
     return {
       json: true,
       prompt:
-        'You review tips that international students post for other students about opening a US bank account. ' +
+        'You review tips that international students post for other students about ' + (body.quest === 'transport' ? 'getting around a US college town without a car' : 'opening a US bank account') + '. ' +
         'Decide whether this tip is safe to publish. Block it if it contains personal identifiers or financial details ' +
         '(card, account, routing, SSN, passport or visa numbers, PINs, passwords, a home address, a personal phone number or email), ' +
         'a scam or something that looks like one (asking people to send money, buy gift cards, or share codes), advertising or referral links, or harassment. ' +
