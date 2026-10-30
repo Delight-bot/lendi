@@ -122,6 +122,14 @@ body.wide.app-dark #shell{box-shadow:0 0 0 10px #2C2925,0 24px 60px rgba(0,0,0,.
 .inv-h{display:flex;align-items:baseline;justify-content:space-between}
 .inv-h h2{margin:0;font-family:var(--display);font-weight:800;font-size:21px}
 .inv-h span{font-size:14px;font-weight:800;color:var(--ink2)}
+.fog{position:absolute;inset:0;z-index:6;pointer-events:none;overflow:hidden}
+.fog .wash{position:absolute;inset:0;background:var(--fog);animation:fogWash var(--fog-t,2.4s) ease-out forwards}
+.fog .cloud{position:absolute;border-radius:50%;background:radial-gradient(closest-side,var(--fog) 55%,transparent);filter:blur(6px);animation:fogDrift var(--fog-t,2.4s) cubic-bezier(.3,.1,.2,1) forwards}
+@keyframes fogWash{0%{opacity:1}45%{opacity:.75}100%{opacity:0}}
+@keyframes fogDrift{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1.35)}}
+.fog-hold{opacity:0;transform:translateY(24px);animation:fogRise .5s ease-out forwards;animation-delay:var(--fog-d,1.6s)}
+@keyframes fogRise{to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.fog .cloud{display:none}.fog .wash{animation-duration:.6s}.fog-hold{animation-delay:.3s}}
 .tap-row{cursor:pointer;border-radius:12px}
 .tap-row:hover{background:var(--s2)}
 
@@ -482,12 +490,14 @@ body.wide #guide{display:flex}
     if (id === 'T-VP-05-Quest' && S.t.started) return 'T-VP-07-Progress';
     return id;
   }
+  let prevScreen = null;
   function go(id) {
     if (id === 'Banks') { renderBanks(); return; }
     if (id === 'Inventory') { renderInventory(); return; }
     id = route(id);
     if (!SCREENS[id]) return;
     closeLayer();
+    prevScreen = S.screen;
     S.screen = id; save();
     frame.innerHTML = prepare(id, SCREENS[id][S.theme === 'dark' ? 'dark' : 'light']);
     frame.scrollTop = 0;
@@ -721,6 +731,21 @@ body.wide #guide{display:flex}
     return d;
   }
 
+  // Fog that rolls back to reveal the map (added for motion; the team's Reveal screen already has a misty edge)
+  function fog(root, ms, holdSel) {
+    if (!root) return;
+    const color = getComputedStyle(root).backgroundColor;
+    const el = document.createElement('div');
+    el.className = 'fog'; el.setAttribute('aria-hidden', 'true');
+    el.style.setProperty('--fog', color); el.style.setProperty('--fog-t', ms + 'ms');
+    const clouds = [[-60, 40, 300, -170, -60], [180, -30, 320, 170, -90], [40, 260, 360, -190, 30], [220, 330, 340, 190, 60], [90, 520, 380, -150, 120], [-80, 620, 320, 160, 140], [200, 640, 300, 180, 100]];
+    el.innerHTML = '<div class="wash"></div>' + clouds.map(([x, y, w, dx, dy]) =>
+      '<div class="cloud" style="left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + Math.round(w * 0.62) + 'px;--dx:' + dx + 'px;--dy:' + dy + 'px"></div>').join('');
+    root.appendChild(el);
+    if (holdSel) root.querySelectorAll(holdSel).forEach((n) => { n.classList.add('fog-hold'); n.style.setProperty('--fog-d', Math.round(ms * 0.6) + 'ms'); });
+    setTimeout(() => el.remove(), ms + 200);
+  }
+
   // ---------- per-screen wiring
   const SETUP = {
     'VP-02-Where'(root) {
@@ -751,6 +776,7 @@ body.wide #guide{display:flex}
     },
     'Map-Home'(root) {
       wireMap(root);
+      if (prevScreen === 'VP-04-Reveal') fog(root, 1500);
       if (!arriving() || S.t.cleared) return;
       const cont = byText(root, 'a', /^\s*Continue\s*$/);
       const card = cont && cont.parentElement;
@@ -767,6 +793,13 @@ body.wide #guide{display:flex}
       if (bank) bank.dataset.go = 'VP-17-Cleared';
       const cont = byText(root, 'a', /quest cleared/i);
       if (cont) cont.dataset.go = 'VP-17-Cleared';
+    },
+    'VP-04-Reveal'(root) {
+      // the map starts fully fogged, then clears to the team's misty edge before the card rises
+      const card = byText(root, 'div', /^\s*Your map is ready/);
+      if (card) card.classList.add('fog-hold');
+      fog(root, 2600);
+      if (card) { card.style.setProperty('--fog-d', '1500ms'); card.style.zIndex = '7'; }
     },
     'VP-05-Quest'(root) { stickyBottom(root, root.querySelector('[data-go$="VP-06-Start"]')); linkCompare(root, 'VP-05-Quest'); },
     'VP-15-StepDone'(root) { linkCompare(root, 'VP-15-StepDone'); },
