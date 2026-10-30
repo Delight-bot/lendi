@@ -1,6 +1,6 @@
-// Lendi AI endpoint (Cloudflare Pages Function, served at /api/ai).
+// Lendi Worker: serves the app from /public and answers AI requests at /api/ai.
 // Only answers the app's three AI requests. Your API key stays on Cloudflare as a secret.
-// Cloudflare Pages > your project > Settings > Variables and Secrets:
+// Cloudflare > Workers & Pages > lendi > Settings > Variables and Secrets:
 //   ANTHROPIC_API_KEY  (Secret)          your key from console.anthropic.com
 //   MODEL              (Text, optional)  defaults to claude-haiku-5-5
 
@@ -71,8 +71,9 @@ function limited(ip) {
   return list.length > max;
 }
 
-export async function onRequestPost({ request, env }) {
+async function handleAI(request, env) {
   const reply = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { 'content-type': 'application/json' } });
+  if (request.method !== 'POST') return reply({ error: 'POST only' }, 405);
   const origin = request.headers.get('Origin');
   if (origin && origin !== new URL(request.url).origin) return reply({ error: 'origin not allowed' }, 403);
   if (!env.ANTHROPIC_API_KEY) return reply({ error: 'missing ANTHROPIC_API_KEY' }, 500);
@@ -95,3 +96,11 @@ export async function onRequestPost({ request, env }) {
   const parsed = parseJSON(text);
   return parsed ? reply({ result: parsed }) : reply({ error: 'bad ai reply' }, 502);
 }
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    if (url.pathname === '/api/ai') return handleAI(request, env);
+    return env.ASSETS.fetch(request);
+  }
+};
