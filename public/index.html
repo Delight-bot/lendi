@@ -168,6 +168,18 @@ body.wide.app-dark #shell{box-shadow:0 0 0 10px #2C2925,0 24px 60px rgba(0,0,0,.
 .me-sec h2{margin:0 0 10px;font-family:var(--display);font-weight:800;font-size:21px}
 .me-row{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:56px;border:0;border-top:2px solid var(--line);background:none;padding:0;font:800 15px var(--body);color:var(--ink);text-align:left}
 .me-row span{color:var(--ink2);font-weight:700;font-size:14px;display:flex;align-items:center;gap:4px}
+.pk-in{animation:pkIn .5s cubic-bezier(.2,1.5,.4,1) both}
+.pk-pop{animation:pkPop .38s cubic-bezier(.3,1.6,.5,1)}
+.pk-badge{animation:pkBadge .4s cubic-bezier(.3,1.8,.5,1) both}
+.pk-bump{animation:pkBump .3s ease-out}
+.pk-ready{animation:pkReady 1.8s ease-in-out infinite}
+@keyframes pkIn{from{opacity:0;translate:0 16px;scale:.85}}
+@keyframes pkPop{40%{scale:.9}70%{scale:1.06}}
+@keyframes pkBadge{from{scale:0}60%{scale:1.3}}
+@keyframes pkBump{50%{scale:1.35}}
+@keyframes pkReady{0%,100%{translate:0 0}50%{translate:0 -3px}}
+.me-dot{display:flex!important;align-items:center;justify-content:center;color:#16302C}
+@media (prefers-reduced-motion:reduce){.pk-in,.pk-pop,.pk-badge,.pk-bump,.pk-ready{animation:none}}
 .tap-row{cursor:pointer;border-radius:12px}
 .tap-row:hover{background:var(--s2)}
 
@@ -936,6 +948,27 @@ body.wide #guide{display:flex}
     setTimeout(() => el.remove(), ms + (opts.wait || 350) + 200);
   }
 
+  // Picking feels alive: options pop in, bounce when tapped, with a tiny tap sound and buzz (added)
+  function tapFX(el) {
+    if (!el) return;
+    el.classList.remove('pk-pop'); void el.offsetWidth; el.classList.add('pk-pop');
+    try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) {}
+    if (S.sound === false) return;
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      if (audio.state === 'suspended') audio.resume();
+      const t = audio.currentTime, o = audio.createOscillator(), g = audio.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(520, t); o.frequency.exponentialRampToValueAtTime(980, t + 0.08);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.18, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+      o.connect(g).connect(audio.destination); o.start(t); o.stop(t + 0.14);
+    } catch (e) {}
+  }
+  function enterFX(items) { items.forEach((n, i) => { n.classList.add('pk-in'); n.style.animationDelay = (80 + i * 60) + 'ms'; }); }
+  function readyFX(root, on) {
+    const next = byText(root, 'a', /^\s*Next\s*$/);
+    if (next) next.classList.toggle('pk-ready', !!on);
+  }
+
   // ---------- per-screen wiring
   const SETUP = {
     'VP-02-Where'(root) {
@@ -952,6 +985,12 @@ body.wide #guide{display:flex}
       });
       const pick = opts.find((b) => b.textContent.trim() === S.where);
       if (pick && pick.getAttribute('aria-pressed') !== 'true') pick.click();
+      enterFX(opts);
+      opts.forEach((b) => b.addEventListener('click', () => {
+        tapFX(b); readyFX(root, true);
+        const check = b.lastElementChild; if (check) { check.classList.remove('pk-badge'); void check.offsetWidth; check.classList.add('pk-badge'); }
+        if (bubble && !bubble.hidden) { bubble.classList.remove('pk-in'); void bubble.offsetWidth; bubble.classList.add('pk-in'); bubble.style.animationDelay = '60ms'; }
+      }));
     },
     'VP-03-Kit'(root) {
       const items = [...root.querySelectorAll('button[aria-pressed]')];
@@ -963,6 +1002,14 @@ body.wide #guide{display:flex}
       toggleItems(items, sync);
       items.forEach((b) => { const want = !!S.kit[b.textContent.trim()]; if ((b.getAttribute('aria-pressed') === 'true') !== want) b._set(want); });
       if (count) count.textContent = String(Object.keys(S.kit).length);
+      enterFX(items);
+      readyFX(root, Object.keys(S.kit).length > 0);
+      items.forEach((b) => b.addEventListener('click', () => {
+        tapFX(b.firstElementChild);
+        const badge = b.firstElementChild.querySelector(':scope > span'); if (badge) badge.classList.add('pk-badge');
+        if (count) { count.classList.remove('pk-bump'); void count.offsetWidth; count.classList.add('pk-bump'); }
+        readyFX(root, Object.keys(S.kit).length > 0);
+      }));
     },
     'Map-Home'(root) {
       wireMap(root); liveMap(root);
@@ -1186,7 +1233,10 @@ body.wide #guide{display:flex}
   }
   function wireMap(root) {
     const avatar = root.querySelector('a[aria-label="Your profile and settings"]');
-    if (avatar) avatar.dataset.go = 'Me';
+    if (avatar) {
+      avatar.dataset.go = 'Me'; avatar.classList.add('me-dot');
+      avatar.innerHTML = '<svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M230.92,212c-15.23-26.33-38.7-45.21-66.09-54.16a72,72,0,1,0-73.66,0C63.78,166.78,40.31,185.66,25.08,212a8,8,0,1,0,13.85,8c18.84-32.56,52.14-52,89.07-52s70.23,19.44,89.07,52a8,8,0,1,0,13.85-8ZM72,96a56,56,0,1,1,56,56A56.06,56.06,0,0,1,72,96Z"/></svg>';
+    }
     root.querySelectorAll('nav a').forEach((a) => {
       const t = a.textContent.trim();
       if (/grapevine/i.test(t)) a.dataset.go = 'VP-12-Grapevine';
