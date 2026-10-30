@@ -116,6 +116,12 @@ body.wide.app-dark #shell{box-shadow:0 0 0 10px #2C2925,0 24px 60px rgba(0,0,0,.
 .bk-foot{margin:14px 20px 0;font-size:12px;font-weight:700;color:var(--ink2);line-height:1.45}
 .bk-cta{position:sticky;bottom:0;margin-top:auto;padding:14px 20px 26px;background:var(--bg);border-top:2px solid var(--line)}
 .bk-cta .btn{margin-top:0}
+.inv-bar{margin:14px 20px 0;height:14px;border-radius:99px;background:var(--s2);overflow:hidden}
+.inv-bar span{display:block;height:100%;border-radius:99px;background:var(--ok)}
+.inv-sec{margin:22px 20px 0;padding-top:18px;border-top:2px solid var(--line)}
+.inv-h{display:flex;align-items:baseline;justify-content:space-between}
+.inv-h h2{margin:0;font-family:var(--display);font-weight:800;font-size:21px}
+.inv-h span{font-size:14px;font-weight:800;color:var(--ink2)}
 .tap-row{cursor:pointer;border-radius:12px}
 .tap-row:hover{background:var(--s2)}
 
@@ -185,6 +191,7 @@ body.wide #guide{display:flex}
   const fresh = () => ({ theme: prefersDark() ? 'dark' : 'light', screen: 'VP-01-Intro', where: 'Just landed',
     kit: { 'Passport': true, 'I-20': true, 'Student ID': true }, started: false, opened: false, cleared: false,
     problem: 'ssn', aiNote: null, myTips: [], helpful: {}, bank: null,
+    earned: {},
     t: { started: false, opened: false, cleared: false, problem: 'missed', aiNote: null, pickup: false, lastStep: null } });
   let S = fresh();
   try { const saved = JSON.parse(localStorage.getItem(KEY) || 'null'); if (saved) { S = Object.assign(fresh(), saved); S.t = Object.assign(fresh().t, saved.t || {}); } } catch (e) {}
@@ -413,6 +420,60 @@ body.wide #guide{display:flex}
     });
   }
 
+
+  // Added screen: Inventory. Everything you've secured, shown as badges in the team's kit style.
+  const INV_ICONS = { 'Shuttle schedule': 'M184,32H72A32,32,0,0,0,40,64V208a16,16,0,0,0,16,16H80a16,16,0,0,0,16-16V192h64v16a16,16,0,0,0,16,16h24a16,16,0,0,0,16-16V64A32,32,0,0,0,184,32ZM56,176V120H200v56Zm0-96H200v24H56ZM72,48H184a16,16,0,0,1,16,16H56A16,16,0,0,1,72,48Zm8,160H56V192H80Zm96,0V192h24v16Zm-72-60a12,12,0,1,1-12-12A12,12,0,0,1,104,148Zm72,0a12,12,0,1,1-12-12A12,12,0,0,1,176,148Zm72-68v24a8,8,0,0,1-16,0V80a8,8,0,0,1,16,0ZM24,80v24a8,8,0,0,1-16,0V80a8,8,0,0,1,16,0Z', 'Airport pickup': 'M185.33,114.21l29.14-27.42.17-.17a32,32,0,0,0-45.26-45.26c0,.06-.11.11-.17.17L141.79,70.67l-83-30.2a8,8,0,0,0-8.39,1.86l-24,24a8,8,0,0,0,1.22,12.31l63.89,42.59L76.69,136H56a8,8,0,0,0-5.65,2.34l-24,24A8,8,0,0,0,29,175.42l36.82,14.73,14.7,36.75.06.16a8,8,0,0,0,13.18,2.47l23.87-23.88A8,8,0,0,0,120,200V179.31l14.76-14.76,42.59,63.89a8,8,0,0,0,12.31,1.22l24-24a8,8,0,0,0,1.86-8.39Zm-.07,97.23-42.59-63.88A8,8,0,0,0,136.8,144c-.27,0-.53,0-.79,0a8,8,0,0,0-5.66,2.35l-24,24A8,8,0,0,0,104,176v20.69L90.93,209.76,79.43,181A8,8,0,0,0,75,176.57l-28.74-11.5L59.32,152H80a8,8,0,0,0,5.66-2.34l24-24a8,8,0,0,0-1.22-12.32L44.56,70.74l13.5-13.49,83.22,30.26a8,8,0,0,0,8.56-2L180.78,52.6A16,16,0,0,1,203.4,75.23l-32.87,30.93a8,8,0,0,0-2,8.56l30.26,83.22Z', 'Ride app': 'M240,112H211.31L168,68.69A15.86,15.86,0,0,0,156.69,64H44.28A16,16,0,0,0,31,71.12L1.34,115.56A8.07,8.07,0,0,0,0,120v48a16,16,0,0,0,16,16H33a32,32,0,0,0,62,0h66a32,32,0,0,0,62,0h17a16,16,0,0,0,16-16V128A16,16,0,0,0,240,112ZM44.28,80H156.69l32,32H23ZM64,192a16,16,0,1,1,16-16A16,16,0,0,1,64,192Zm128,0a16,16,0,1,1,16-16A16,16,0,0,1,192,192Zm48-24H223a32,32,0,0,0-62,0H95a32,32,0,0,0-62,0H16V128H240Z' };
+  const INV_ITEMS = [
+    { group: 'Documents', items: ['Passport', 'I-20', 'Student ID', 'SSN', 'Proof of address'] },
+    { group: 'Money', items: ['Bank account', 'Debit card'] },
+    { group: 'Phone', items: ['US number'] },
+    { group: 'Getting around', items: ['Airport pickup', 'Shuttle schedule', 'Ride app'] }
+  ];
+  const WHERE_TO_GET = { 'Bank account': 'Banking & Payments', 'Debit card': 'Banking & Payments', 'Proof of address': 'Banking & Payments',
+    'Shuttle schedule': 'Transportation', 'Airport pickup': 'Transportation', 'Ride app': 'Transportation',
+    'US number': 'Phone & Connectivity', 'SSN': 'SSN', 'Student ID': 'Campus Check-In' };
+  function earn(item, quest) { if (!S.earned[item]) { S.earned[item] = quest; save(); } }
+  const has = (item) => !!(S.kit[item] || S.earned[item]);
+  let invBack = 'Map-Home';
+  function renderInventory() {
+    closeLayer();
+    if (S.screen !== 'Inventory') invBack = S.screen || 'Map-Home';
+    S.screen = 'Inventory'; save();
+    // borrow the exact badge styles from the team's "What do you already have?" screen
+    const tpl = document.createElement('div');
+    tpl.innerHTML = SCREENS['VP-03-Kit'][S.theme === 'dark' ? 'dark' : 'light'];
+    const btns = [...tpl.querySelectorAll('button[aria-pressed]')];
+    const on = btns.find((b) => b.getAttribute('aria-pressed') === 'true'), off = btns.find((b) => b.getAttribute('aria-pressed') !== 'true');
+    const grid = tpl.querySelector('button[aria-pressed]').parentElement;
+    const check = on.firstElementChild.lastElementChild.outerHTML;
+    const byLabel = Object.fromEntries(btns.map((b) => [b.textContent.trim(), b]));
+    const badge = (item) => {
+      const got = has(item), model = got ? on : off;
+      const src = byLabel[item];
+      const svg = src ? src.firstElementChild.querySelector('svg').outerHTML
+        : '<svg width="26" height="26" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="' + INV_ICONS[item] + '"/></svg>';
+      const tip = got ? (S.earned[item] ? item + ': earned in ' + S.earned[item] + '.' : item + ': from your kit.')
+        : item + ': not yet. ' + (WHERE_TO_GET[item] ? 'Get it in ' + WHERE_TO_GET[item] + '.' : '');
+      return '<button type="button" data-toast="' + esc(tip) + '" aria-label="' + esc(item + (got ? ', collected' : ', not collected yet')) + '" style="' + model.getAttribute('style') + '">' +
+        '<span style="' + model.firstElementChild.getAttribute('style') + '">' + svg + (got ? check : '') + '</span>' +
+        '<span style="' + model.lastElementChild.getAttribute('style') + '">' + esc(item) + '</span></button>';
+    };
+    const all = INV_ITEMS.flatMap((g) => g.items), n = all.filter(has).length;
+    const sections = INV_ITEMS.map((g) => {
+      const got = g.items.filter(has).length;
+      return '<section class="inv-sec"><div class="inv-h"><h2>' + g.group + '</h2><span>' + got + ' of ' + g.items.length + '</span></div>' +
+        '<div style="' + grid.getAttribute('style') + ';margin:14px 0 0">' + g.items.map(badge).join('') + '</div></section>';
+    }).join('');
+    frame.innerHTML = '<div class="bk" data-screen="Inventory">' +
+      '<div class="bk-top"><button class="bk-back" type="button" data-back aria-label="Back">' + BACK_ICON + '</button></div>' +
+      '<div class="bk-head"><h1>Inventory</h1><p>' + n + ' of ' + all.length + ' badges collected</p></div>' +
+      '<div class="inv-bar" role="img" aria-label="' + n + ' of ' + all.length + ' collected"><span style="width:' + Math.max(4, Math.round(100 * n / all.length)) + '%"></span></div>' +
+      sections +
+      '<p class="bk-foot" style="margin-bottom:28px">Lendi tracks whether you have an item, not the actual item itself.</p></div>';
+    frame.scrollTop = 0;
+    frame.querySelector('[data-back]').addEventListener('click', () => go(invBack));
+  }
+
   function route(id) {
     if (id === 'Map-Home' && S.cleared) return 'Map-Cleared';
     if (id === 'VP-05-Quest' && S.cleared) return 'VP-17-Cleared';
@@ -423,6 +484,7 @@ body.wide #guide{display:flex}
   }
   function go(id) {
     if (id === 'Banks') { renderBanks(); return; }
+    if (id === 'Inventory') { renderInventory(); return; }
     id = route(id);
     if (!SCREENS[id]) return;
     closeLayer();
@@ -880,7 +942,9 @@ body.wide #guide{display:flex}
     'VP-17-Cleared'(root) {
       Q().cleared = true; save();
       const inv = byText(root, 'a', /^\s*inventory\s*$/i);
-      if (inv) { delete inv.dataset.go; inv.dataset.toast = 'Inventory shows everything in your kit. Coming soon.'; }
+      if (inv) inv.dataset.go = 'Inventory';
+      if (inT()) { earn('Shuttle schedule', 'Transportation'); earn('Ride app', 'Transportation'); }
+      else earn('Bank account', 'Banking & Payments');
     }
   };
   function linkCompare(root, back) {
@@ -902,7 +966,7 @@ body.wide #guide{display:flex}
     root.querySelectorAll('nav a').forEach((a) => {
       const t = a.textContent.trim();
       if (/grapevine/i.test(t)) a.dataset.go = 'VP-12-Grapevine';
-      if (/inventory/i.test(t)) a.dataset.toast = 'Inventory shows everything in your kit. Coming soon.';
+      if (/inventory/i.test(t)) a.dataset.go = 'Inventory';
       if (/home/i.test(t)) a.dataset.toast = 'You’re on the map.';
     });
     const tr = root.querySelector('a[aria-label="Transportation"]');
@@ -918,6 +982,7 @@ body.wide #guide{display:flex}
   }
 
   // things that happen when you leave a screen through a link
+  const to0 = (id) => base(id);
   function beforeGo(target, el) {
     const fromId = S.screen, from = base(fromId), q = Q();
     if (from === 'VP-09-Stuck' && isT(fromId)) {
@@ -941,7 +1006,9 @@ body.wide #guide{display:flex}
       else if (/us number/i.test(t)) S.problem = 'number';
       else if (/fees/i.test(t)) S.problem = 'fees';
     }
-    if (fromId === 'T-VP-08-Step' && target === 'T-VP-16-Item') { S.t.lastStep = arriving() ? 'airport' : 'shuttle'; if (arriving()) S.t.pickup = true; }
+    if (fromId === 'T-VP-08-Step' && target === 'T-VP-16-Item') { S.t.lastStep = arriving() ? 'airport' : 'shuttle'; if (arriving()) S.t.pickup = true; earn(S.t.lastStep === 'airport' ? 'Airport pickup' : 'Shuttle schedule', 'Transportation'); }
+    if (fromId === 'VP-08-Step' && target === 'VP-16-Item') earn('Bank account', 'Banking & Payments');
+    if (from === 'VP-16-Item' && to0(target) === 'VP-08-Step') { const it = isT(fromId) ? (S.t.lastStep === 'airport' ? 'Airport pickup' : 'Shuttle schedule') : 'Bank account'; delete S.earned[it]; }
     if (fromId === 'T-VP-16-Item' && target === 'T-VP-08-Step' && S.t.lastStep === 'airport') S.t.pickup = false;
     const to = base(target), tq = isT(target) ? S.t : (target === 'Map-Home' || target === 'Banks' ? q : S);
     if (to === 'VP-07-Progress' && from === 'VP-06-Start') tq.started = true;
@@ -991,7 +1058,7 @@ body.wide #guide{display:flex}
 
   applyTheme();
   fit();
-  go(SCREENS[S.screen] || S.screen === 'Banks' ? S.screen : 'VP-01-Intro');
+  go(SCREENS[S.screen] || S.screen === 'Banks' || S.screen === 'Inventory' ? S.screen : 'VP-01-Intro');
 })();
 </script>
 
