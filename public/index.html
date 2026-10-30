@@ -685,6 +685,25 @@ body.wide #guide{display:flex}
     return id;
   }
   let prevScreen = null;
+  // Screens drawn at a fixed tall height scroll into empty space; stop the scroll where the content ends (added)
+  function trimHeight(root) {
+    if (!root || !/^\d+px$/.test(root.style.height || '') || root.querySelector('.mv-world')) return;
+    const H = frame.clientHeight, cur = parseFloat(root.style.height);
+    if (cur <= H) return;
+    const top = root.getBoundingClientRect().top, z = (root.getBoundingClientRect().height || cur) / cur;
+    const pinned = (n) => { for (let p = n; p && p !== root; p = p.parentElement) { const cs = getComputedStyle(p); if ((cs.position === 'sticky' || cs.position === 'absolute' || cs.position === 'fixed') && cs.bottom === '0px') return p; } return null; };
+    let max = 0, bar = 0;
+    root.querySelectorAll('*').forEach((n) => {
+      const cs = getComputedStyle(n);
+      if (cs.display === 'none' || cs.visibility === 'hidden') return;
+      const pb = pinned(n);
+      if (pb) { bar = Math.max(bar, pb.getBoundingClientRect().height / z); return; }
+      if (n.children.length && !/^(BUTTON|A|P|H1|H2|H3|LI|svg|IMG)$/i.test(n.tagName)) return;
+      const r = n.getBoundingClientRect(); if (r.height > 0 && r.height / z < 700) max = Math.max(max, (r.bottom - top) / z);
+    });
+    const want = Math.ceil(Math.max(H, max + 28 + bar));
+    if (want < cur) root.style.height = want + 'px';
+  }
   function go(id) {
     if (id === 'Banks') { renderBanks(); return; }
     if (id === 'Inventory') { renderInventory(); return; }
@@ -699,6 +718,7 @@ body.wide #guide{display:flex}
     const root = frame.firstElementChild;
     if (root) root.setAttribute('data-screen', id);
     (SETUP[id] || SETUP[base(id)] || (() => {}))(root);
+    trimHeight(root);
   }
 
   function applyTheme() {
@@ -997,6 +1017,28 @@ body.wide #guide{display:flex}
   addEventListener('pointerup', release); addEventListener('pointercancel', release);
   shell.addEventListener('pointermove', (e) => { if (pressed && e.buttons && !pressed.contains(document.elementFromPoint(e.clientX, e.clientY))) release(); });
 
+  function kitFly(root, iconEl, target, adding, done) {
+    const R = root.getBoundingClientRect(), z = (R.width || 390) / 390;
+    const a = iconEl.getBoundingClientRect(), t = target.getBoundingClientRect();
+    const ax = (a.left - R.left) / z + a.width / z / 2, ay = (a.top - R.top) / z + a.height / z / 2;
+    const tx = (t.left - R.left) / z + t.width / z / 2, ty = (t.top - R.top) / z + t.height / z / 2;
+    const ghost = iconEl.cloneNode(true);
+    const badge = ghost.querySelector(':scope > span'); if (badge) badge.remove();
+    const size = a.width / z;
+    ghost.style.cssText += ';position:absolute;left:' + (ax - size / 2) + 'px;top:' + (ay - size / 2) + 'px;margin:0;z-index:9;pointer-events:none';
+    root.appendChild(ghost);
+    const dx = tx - ax, dy = ty - ay, lift = Math.min(-60, -Math.abs(dx) * 0.4);
+    // a curved swoosh: up and over, then down into the counter, shrinking as it lands
+    const frames = [0, 0.25, 0.5, 0.75, 1].map((p) => ({
+      transform: 'translate(' + (dx * p) + 'px,' + (dy * p + lift * 4 * p * (1 - p)) + 'px) scale(' + (1 - 0.72 * p) + ') rotate(' + (p * (dx > 0 ? 200 : -200)) + 'deg)',
+      opacity: p < 0.85 ? 1 : 0.4
+    }));
+    if (!adding) frames.reverse().forEach((f, i, arr) => { f.opacity = i === arr.length - 1 ? 0 : 1; });
+    const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const anim = ghost.animate(frames, { duration: reduce ? 1 : 620, easing: 'cubic-bezier(.45,.05,.35,1)', fill: 'forwards' });
+    anim.onfinish = () => { ghost.remove(); if (done) done(); };
+  }
+
   // ---------- per-screen wiring
   const SETUP = {
     'VP-02-Where'(root) {
@@ -1025,7 +1067,7 @@ body.wide #guide{display:flex}
       const count = byText(root, 'span', /^\d+$/);
       const sync = () => {
         S.kit = {}; items.forEach((b) => { if (b.getAttribute('aria-pressed') === 'true') S.kit[b.textContent.trim()] = true; });
-        save(); if (count) count.textContent = String(Object.keys(S.kit).length);
+        save();
       };
       toggleItems(items, sync);
       items.forEach((b) => { const want = !!S.kit[b.textContent.trim()]; if ((b.getAttribute('aria-pressed') === 'true') !== want) b._set(want); });
@@ -1035,8 +1077,12 @@ body.wide #guide{display:flex}
       items.forEach((b) => b.addEventListener('click', () => {
         tapFX(b.firstElementChild);
         const badge = b.firstElementChild.querySelector(':scope > span'); if (badge) badge.classList.add('pk-badge');
-        if (count) { count.classList.remove('pk-bump'); void count.offsetWidth; count.classList.add('pk-bump'); }
-        readyFX(root, Object.keys(S.kit).length > 0);
+        const n = Object.keys(S.kit).length, adding = b.getAttribute('aria-pressed') === 'true';
+        const bump = () => { if (!count) return; count.textContent = String(n); count.classList.remove('pk-bump'); void count.offsetWidth; count.classList.add('pk-bump'); };
+        // the item swooshes into the counter, then the number goes up (or flies back out when you untick it)
+        if (count) kitFly(root, b.firstElementChild, count, adding, adding ? bump : null);
+        if (!adding) bump();
+        readyFX(root, n > 0);
       }));
     },
     'Map-Home'(root) {
