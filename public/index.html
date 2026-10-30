@@ -144,6 +144,7 @@ body.wide.app-dark #shell{box-shadow:0 0 0 10px #2C2925,0 24px 60px rgba(0,0,0,.
 @keyframes fogFade{to{opacity:0}}
 .mv-world{position:absolute;left:0;top:0;width:390px;height:844px;transform-origin:0 0;touch-action:none;cursor:grab;will-change:transform}
 .mv-world.dragging{cursor:grabbing}
+.mv-terrain{position:absolute;left:0;top:0;width:390px;height:844px;transform-origin:0 0;pointer-events:none}
 .mv-world a[href]{transition:scale .12s}
 .mv-world a[href]:active{scale:.92}
 .mv-bob{animation:mvBob 3.2s ease-in-out infinite}
@@ -594,7 +595,6 @@ body.wide #guide{display:flex}
       n.matches('a[aria-label="Your profile and settings"], button[aria-label^="Show quests"], .fog') || (n.tagName === 'svg' && n.getAttribute('width') === '0');
     const world = document.createElement('div');
     world.className = 'mv-world';
-    world.style.background = getComputedStyle(root).background;
     [...root.children].filter((n) => !fixed(n)).forEach((n) => world.appendChild(n));
     root.insertBefore(world, root.children[1] || null);
     // motion
@@ -640,6 +640,20 @@ body.wide #guide{display:flex}
       });
       a.addEventListener('pointerleave', () => { a.classList.remove('hov'); if (lbl) lbl.classList.remove('hov'); if (tip) { tip.remove(); tip = null; } });
     });
+    // The terrain (land, trees, fog, region names) stays put behind the road. Only the road, stops and labels slide (added)
+    const terrain = document.createElement('div'); terrain.className = 'mv-terrain';
+    const big = world.firstElementChild;
+    if (big && big.tagName.toLowerCase() === 'svg' && big.children.length >= 6) {
+      const roadSvg = big.cloneNode(true);
+      [...big.children].forEach((c) => { if (/CF4520|98,106,100/i.test(c.getAttribute('stroke') || '')) c.remove(); });
+      [...roadSvg.children].forEach((c) => { if (!/CF4520|98,106,100/i.test(c.getAttribute('stroke') || '')) c.remove(); });
+      terrain.appendChild(big); world.insertBefore(roadSvg, world.firstChild);
+    }
+    [...world.children].forEach((n) => {
+      const st = n.getAttribute('style') || '';
+      if ((n.tagName.toLowerCase() === 'svg' && n !== world.firstElementChild) || n.classList.contains('mv-cloud') || (n.tagName === 'SPAN' && /Baloo 2/.test(st))) terrain.appendChild(n);
+    });
+    root.insertBefore(terrain, world);
     // camera: zoomed in a little so there is room to explore
     const K = 1.28, vw = 390, vh = root.clientHeight;
     const minX = vw - 390 * K, minY = Math.min(0, vh - 844 * K);
@@ -648,6 +662,7 @@ body.wide #guide{display:flex}
     let x = -60, y = -40;
     if (hero) { const hx = (hero.offsetLeft + hero.offsetWidth / 2) * K, hy = (hero.offsetTop + hero.offsetHeight / 2) * K; x = 195 - hx; y = vh * 0.32 - hy; }
     x = clamp(x, minX); y = clamp(y, minY);
+    terrain.style.transform = 'translate(' + ((390 - 390 * K) / 2) + 'px,' + Math.min(0, (vh - 844 * K) / 2) + 'px) scale(' + K + ')';
     const place = () => { world.style.transform = 'translate(' + x + 'px,' + y + 'px) scale(' + K + ')'; };
     place();
     let down = null, moved = false, vx = 0, vy = 0, last = 0, raf = 0;
