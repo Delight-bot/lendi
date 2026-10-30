@@ -123,13 +123,51 @@ body.wide.app-dark #shell{box-shadow:0 0 0 10px #2C2925,0 24px 60px rgba(0,0,0,.
 .inv-h h2{margin:0;font-family:var(--display);font-weight:800;font-size:21px}
 .inv-h span{font-size:14px;font-weight:800;color:var(--ink2)}
 .fog{position:absolute;inset:0;z-index:6;pointer-events:none;overflow:hidden}
-.fog .wash{position:absolute;inset:0;background:var(--fog);animation:fogWash var(--fog-t,2.4s) ease-out forwards}
-.fog .cloud{position:absolute;border-radius:50%;background:radial-gradient(closest-side,var(--fog) 55%,transparent);filter:blur(6px);animation:fogDrift var(--fog-t,2.4s) cubic-bezier(.3,.1,.2,1) forwards}
-@keyframes fogWash{0%{opacity:1}45%{opacity:.75}100%{opacity:0}}
-@keyframes fogDrift{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1.35)}}
+.fog .bank{position:absolute;top:-40px;height:calc(100% + 80px);width:300px;animation:var(--anim) var(--fog-t,2s) cubic-bezier(.55,0,.25,1) var(--fog-wait,.35s) forwards}
+.fog .bank svg{display:block;width:100%;height:100%;overflow:visible}
+.fog .bank.l{left:-40px;--anim:fogL}
+.fog .bank.r{right:-40px;--anim:fogR}
+.fog .puff{position:absolute;animation:var(--anim) var(--fog-t,2s) cubic-bezier(.55,0,.25,1) var(--fog-wait,.35s) forwards}
+.fog .puff svg{display:block;overflow:visible}
+@keyframes fogL{0%{translate:0 0}12%{translate:14px 0}100%{translate:-125% -20px;opacity:.6}}
+@keyframes fogR{0%{translate:0 0}12%{translate:-14px 0}100%{translate:125% 20px;opacity:.6}}
+@keyframes fogUpL{12%{translate:10px 4px}100%{translate:-260px -160px;opacity:0}}
+@keyframes fogUpR{12%{translate:-10px 4px}100%{translate:260px -140px;opacity:0}}
+@keyframes fogDnL{12%{translate:10px -4px}100%{translate:-260px 160px;opacity:0}}
+@keyframes fogDnR{12%{translate:-10px -4px}100%{translate:260px 150px;opacity:0}}
 .fog-hold{opacity:0;transform:translateY(24px);animation:fogRise .5s ease-out forwards;animation-delay:var(--fog-d,1.6s)}
 @keyframes fogRise{to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){.fog .cloud{display:none}.fog .wash{animation-duration:.6s}.fog-hold{animation-delay:.3s}}
+@media (prefers-reduced-motion:reduce){.fog .bank,.fog .puff{animation:fogFade .5s ease-out .1s forwards}.fog-hold{animation-delay:.3s}}
+@keyframes fogFade{to{opacity:0}}
+.mv-world{position:absolute;left:0;top:0;width:390px;height:844px;transform-origin:0 0;touch-action:none;cursor:grab;will-change:transform}
+.mv-world.dragging{cursor:grabbing}
+.mv-world a[href]{transition:scale .12s}
+.mv-world a[href]:active{scale:.92}
+.mv-bob{animation:mvBob 3.2s ease-in-out infinite}
+.mv-hero{animation:mvHero 1.6s ease-in-out infinite}
+.mv-rock{animation:mvRock 4.5s ease-in-out infinite;transform-origin:50% 80%}
+.mv-march{animation:mvMarch .9s linear infinite}
+.mv-ping{position:absolute;width:30px;height:30px;border-radius:99px;border:3px solid var(--ok);animation:mvPing 2s ease-out infinite;pointer-events:none}
+.mv-cloud{position:absolute;border-radius:50%;pointer-events:none;filter:blur(4px);animation:mvCloud linear infinite}
+@keyframes mvBob{50%{translate:0 -4px}}
+@keyframes mvHero{0%,100%{translate:0 0}50%{translate:0 -7px}}
+@keyframes mvRock{0%,100%{rotate:-4deg}50%{rotate:4deg}}
+@keyframes mvMarch{to{stroke-dashoffset:-9.1}}
+@keyframes mvPing{0%{scale:.6;opacity:.9}100%{scale:2.2;opacity:0}}
+@keyframes mvCloud{from{translate:-260px 0}to{translate:620px 0}}
+@media (prefers-reduced-motion:reduce){.mv-bob,.mv-hero,.mv-rock,.mv-march,.mv-ping,.mv-cloud{animation:none}}
+.me-hero{display:flex;flex-direction:column;align-items:center;gap:10px;padding:8px 20px 0;text-align:center}
+.me-av{width:96px;height:96px;box-sizing:border-box;border-radius:999px;background:#CFE3D2;border:5px solid var(--bg);box-shadow:0 0 0 3px var(--ink),0 6px 0 3px var(--ink);display:flex;align-items:center;justify-content:center;color:#16302C}
+.me-hero h1{margin:6px 0 0;font-family:var(--display);font-weight:800;font-size:30px;line-height:1.05}
+.me-chip{height:28px;padding:0 12px;border-radius:99px;background:var(--okbg);color:var(--okink);font-size:13px;font-weight:800;display:inline-flex;align-items:center;gap:6px}
+.me-stats{margin:22px 20px 0;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.me-stat{border:2px solid var(--line);box-shadow:0 3px 0 var(--line);border-radius:18px;padding:12px 6px;display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--bg);color:var(--ink);font:inherit;text-decoration:none}
+.me-stat strong{font-family:var(--display);font-size:26px;line-height:1}
+.me-stat span{font-size:12px;font-weight:800;color:var(--ink2)}
+.me-sec{margin:24px 20px 0}
+.me-sec h2{margin:0 0 10px;font-family:var(--display);font-weight:800;font-size:21px}
+.me-row{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:56px;border:0;border-top:2px solid var(--line);background:none;padding:0;font:800 15px var(--body);color:var(--ink);text-align:left}
+.me-row span{color:var(--ink2);font-weight:700;font-size:14px;display:flex;align-items:center;gap:4px}
 .tap-row{cursor:pointer;border-radius:12px}
 .tap-row:hover{background:var(--s2)}
 
@@ -482,6 +520,105 @@ body.wide #guide{display:flex}
     frame.querySelector('[data-back]').addEventListener('click', () => go(invBack));
   }
 
+  // ---------- living map: drag to explore, things bob and drift (added; inspired by game maps)
+  function liveMap(root) {
+    if (!root) return;
+    root.style.height = Math.max(844, frame.clientHeight) + 'px';
+    frame.scrollTop = 0;
+    const fixed = (n) => n.tagName === 'NAV' || /bottom:\s*\d/.test(n.getAttribute('style') || '') ||
+      n.matches('a[aria-label="Your profile and settings"], button[aria-label^="Show quests"], .fog') || (n.tagName === 'svg' && n.getAttribute('width') === '0');
+    const world = document.createElement('div');
+    world.className = 'mv-world';
+    world.style.background = getComputedStyle(root).background;
+    [...root.children].filter((n) => !fixed(n)).forEach((n) => world.appendChild(n));
+    root.insertBefore(world, root.children[1] || null);
+    // motion
+    world.querySelectorAll('a[href]').forEach((a, i) => {
+      if (/current quest/i.test(a.getAttribute('aria-label') || '')) a.classList.add('mv-hero');
+      else if (!/locked/i.test(a.getAttribute('aria-label') || '')) { a.classList.add('mv-bob'); a.style.animationDelay = (i * 0.37 % 2.4) + 's'; }
+    });
+    world.querySelectorAll('svg use[href="#gi-galleon"], svg use[href="#gi-sea-dragon"], svg use[href="#gi-windmill"], svg use[href="#gi-lighthouse"]').forEach((u, i) => {
+      const svg = u.closest('svg'); svg.classList.add('mv-rock'); svg.style.animationDelay = (i * 0.9) + 's';
+    });
+    world.querySelectorAll('path[stroke-dasharray="0.1 9"], g[stroke-dasharray="0.1 9"] path').forEach((p) => p.classList.add('mv-march'));
+    const pin = [...world.children].find((n) => n.tagName === 'SPAN' && /width: 30px; height: 30px/.test(n.getAttribute('style') || ''));
+    if (pin) { const r = document.createElement('span'); r.className = 'mv-ping'; r.style.left = pin.style.left; r.style.top = pin.style.top; world.insertBefore(r, pin); }
+    const dark = S.theme === 'dark';
+    [[60, 90, 26], [300, 120, 40], [520, 150, 33]].forEach(([top, w, dur], i) => {
+      const c = document.createElement('span'); c.className = 'mv-cloud';
+      c.style.cssText += ';top:' + top + 'px;left:0;width:' + w * 2.2 + 'px;height:' + w + 'px;background:' + (dark ? 'rgba(255,255,255,.07)' : 'rgba(255,253,247,.75)') + ';animation-duration:' + dur + 's;animation-delay:-' + (i * 11) + 's';
+      world.appendChild(c);
+    });
+    // camera: zoomed in a little so there is room to explore
+    const K = 1.28, vw = 390, vh = root.clientHeight;
+    const minX = vw - 390 * K, minY = Math.min(0, vh - 844 * K);
+    const clamp = (v, lo) => Math.max(lo, Math.min(0, v));
+    const hero = world.querySelector('.mv-hero') || world.querySelector('a[href]');
+    let x = -60, y = -40;
+    if (hero) { const hx = (hero.offsetLeft + hero.offsetWidth / 2) * K, hy = (hero.offsetTop + hero.offsetHeight / 2) * K; x = 195 - hx; y = vh * 0.32 - hy; }
+    x = clamp(x, minX); y = clamp(y, minY);
+    const place = () => { world.style.transform = 'translate(' + x + 'px,' + y + 'px) scale(' + K + ')'; };
+    place();
+    let down = null, moved = false, vx = 0, vy = 0, last = 0, raf = 0;
+    const ratio = () => 390 / (root.getBoundingClientRect().width || 390);
+    world.addEventListener('pointerdown', (e) => { cancelAnimationFrame(raf); down = { px: e.clientX, py: e.clientY, x, y }; moved = false; vx = vy = 0; last = performance.now(); });
+    addEventListener('pointermove', (e) => {
+      if (!down) return;
+      const r = ratio(), dx = (e.clientX - down.px) * r, dy = (e.clientY - down.py) * r;
+      if (!moved && Math.hypot(dx, dy) < 6) return;
+      moved = true; world.classList.add('dragging');
+      const nx = clamp(down.x + dx, minX), ny = clamp(down.y + dy, minY), t = performance.now(), dt = Math.max(1, t - last);
+      vx = (nx - x) / dt; vy = (ny - y) / dt; last = t; x = nx; y = ny; place();
+    });
+    const up = () => {
+      if (!down) return; down = null; world.classList.remove('dragging');
+      if (!moved) return;
+      const glide = () => { vx *= 0.92; vy *= 0.92; x = clamp(x + vx * 16, minX); y = clamp(y + vy * 16, minY); place(); if (Math.hypot(vx, vy) > 0.02 && frame.contains(world)) raf = requestAnimationFrame(glide); };
+      raf = requestAnimationFrame(glide);
+    };
+    addEventListener('pointerup', up); addEventListener('pointercancel', up);
+    world.addEventListener('click', (e) => { if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; } }, true);
+    root.addEventListener('wheel', (e) => { if (!world.contains(e.target)) return; e.preventDefault(); x = clamp(x - e.deltaX, minX); y = clamp(y - e.deltaY, minY); place(); }, { passive: false });
+  }
+
+  // ---------- Me page (opens from your dot on the map)
+  let meBack = 'Map-Home';
+  function renderMe() {
+    closeLayer();
+    if (S.screen !== 'Me') meBack = S.screen || 'Map-Home';
+    S.screen = 'Me'; save();
+    const all = INV_ITEMS.flatMap((g) => g.items), n = all.filter(has).length;
+    const cleared = (S.cleared ? 1 : 0) + (S.t.cleared ? 1 : 0) + 1; // Phone & Connectivity starts cleared on the team's map
+    const ARROW = '<svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M181.66,133.66l-80,80a8,8,0,0,1-11.32-11.32L164.69,128,90.34,53.66a8,8,0,0,1,11.32-11.32l80,80A8,8,0,0,1,181.66,133.66Z"/></svg>';
+    const PERSON = '<svg width="44" height="44" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M230.92,212c-15.23-26.33-38.7-45.21-66.09-54.16a72,72,0,1,0-73.66,0C63.78,166.78,40.31,185.66,25.08,212a8,8,0,1,0,13.85,8c18.84-32.56,52.14-52,89.07-52s70.23,19.44,89.07,52a8,8,0,1,0,13.85-8ZM72,96a56,56,0,1,1,56,56A56.06,56.06,0,0,1,72,96Z"/></svg>';
+    frame.innerHTML = '<div class="bk" data-screen="Me">' +
+      '<div class="bk-top"><button class="bk-back" type="button" data-back aria-label="Back to the map">' + BACK_ICON + '</button></div>' +
+      '<div class="me-hero"><span class="me-av">' + PERSON + '</span><h1>Me</h1>' +
+      '<span class="me-chip">' + esc(S.where) + '</span><span style="font-size:14px;font-weight:700;color:var(--ink2)">' + esc(CONFIG.university) + '</span></div>' +
+      '<div class="me-stats">' +
+        '<a href="#" class="me-stat" data-go="Map-Home"><strong>' + cleared + '</strong><span>Quests cleared</span></a>' +
+        '<a href="#" class="me-stat" data-go="Inventory"><strong>' + n + '</strong><span>Badges</span></a>' +
+        '<a href="#" class="me-stat" data-go="VP-12-Grapevine"><strong>' + S.myTips.length + '</strong><span>Tips shared</span></a>' +
+      '</div>' +
+      '<section class="me-sec"><h2>Settings</h2>' +
+        '<div class="label" style="margin:0 0 8px">Appearance</div>' +
+        '<div class="seg" role="group" aria-label="Appearance"><button type="button" data-t="light" aria-pressed="' + (S.theme !== 'dark') + '">Day</button><button type="button" data-t="dark" aria-pressed="' + (S.theme === 'dark') + '">Night</button></div>' +
+        '<div style="height:12px"></div>' +
+        '<button type="button" class="me-row" data-go="VP-02-Where">Where you are<span>' + esc(S.where) + ARROW + '</span></button>' +
+        '<button type="button" class="me-row" data-go="VP-03-Kit">What you already have<span>Edit' + ARROW + '</span></button>' +
+        '<button type="button" class="me-row" data-toast="More languages are coming soon.">Language<span>English' + ARROW + '</span></button>' +
+        '<button type="button" class="me-row" data-toast="Notifications are coming soon.">Notifications<span>Off' + ARROW + '</span></button>' +
+        '<button type="button" class="me-row" id="me-sound">Sound effects<span>' + (S.sound === false ? 'Off' : 'On') + ARROW + '</span></button>' +
+      '</section>' +
+      '<div style="margin:22px 20px 32px"><button class="btn ghost" type="button" id="me-restart">Restart demo</button></div>' +
+      '</div>';
+    frame.scrollTop = 0;
+    frame.querySelector('[data-back]').addEventListener('click', () => go(meBack));
+    frame.querySelectorAll('[data-t]').forEach((b) => b.addEventListener('click', () => setTheme(b.dataset.t)));
+    frame.querySelector('#me-restart').addEventListener('click', restart);
+    frame.querySelector('#me-sound').addEventListener('click', () => { S.sound = S.sound === false; save(); if (S.sound) wind(700, 0.35); renderMe(); });
+  }
+
   function route(id) {
     if (id === 'Map-Home' && S.cleared) return 'Map-Cleared';
     if (id === 'VP-05-Quest' && S.cleared) return 'VP-17-Cleared';
@@ -494,6 +631,7 @@ body.wide #guide{display:flex}
   function go(id) {
     if (id === 'Banks') { renderBanks(); return; }
     if (id === 'Inventory') { renderInventory(); return; }
+    if (id === 'Me') { renderMe(); return; }
     id = route(id);
     if (!SCREENS[id]) return;
     closeLayer();
@@ -731,19 +869,71 @@ body.wide #guide{display:flex}
     return d;
   }
 
-  // Fog that rolls back to reveal the map (added for motion; the team's Reveal screen already has a misty edge)
-  function fog(root, ms, holdSel) {
+  // Clouds that part to reveal the map, with a soft gust of wind (added for motion; the team's Reveal screen already has a misty edge)
+  let audio = null;
+  function wind(ms, loud) {
+    if (S.sound === false) return;
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      if (audio.state === 'suspended') audio.resume();
+      const t0 = audio.currentTime, len = ms / 1000 + 0.6;
+      const buf = audio.createBuffer(1, Math.ceil(audio.sampleRate * len), audio.sampleRate), d = buf.getChannelData(0);
+      let b = 0; for (let i = 0; i < d.length; i++) { b = 0.97 * b + 0.03 * (Math.random() * 2 - 1); d[i] = b * 6; } // brown-ish noise: breathy, not hissy
+      const src = audio.createBufferSource(); src.buffer = buf;
+      const bp = audio.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 0.9;
+      const g = audio.createGain(), v = loud || 0.5;
+      // two gusts: whhh ... whhhhh
+      bp.frequency.setValueAtTime(260, t0);
+      bp.frequency.linearRampToValueAtTime(820, t0 + len * 0.28);
+      bp.frequency.linearRampToValueAtTime(380, t0 + len * 0.45);
+      bp.frequency.linearRampToValueAtTime(1100, t0 + len * 0.72);
+      bp.frequency.linearRampToValueAtTime(300, t0 + len);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.5 * v, t0 + len * 0.25);
+      g.gain.exponentialRampToValueAtTime(0.12 * v, t0 + len * 0.45);
+      g.gain.exponentialRampToValueAtTime(0.8 * v, t0 + len * 0.7);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + len);
+      src.connect(bp).connect(g).connect(audio.destination);
+      src.start(t0); src.stop(t0 + len);
+    } catch (e) {}
+  }
+  // one puffy cloud in the map's flat, outlined style
+  function cloudSVG(w, fill, shade, line, seed) {
+    const h = Math.round(w * 0.6), r = (n) => { seed = (seed * 9301 + 49297) % 233280; return n * seed / 233280; };
+    const puffs = [];
+    const n = 5;
+    for (let i = 0; i < n; i++) { const cx = w * (0.14 + 0.72 * i / (n - 1)) + r(10) - 5; const rad = w * (0.17 + r(0.09)) * (i === 0 || i === n - 1 ? 0.8 : 1); puffs.push([cx, h * 0.62 - r(h * 0.22), rad]); }
+    const base = '<rect x="' + w * 0.1 + '" y="' + h * 0.5 + '" width="' + w * 0.8 + '" height="' + h * 0.42 + '" rx="' + h * 0.21 + '"/>';
+    const circles = puffs.map(([x, y, rr]) => '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="' + rr.toFixed(1) + '"/>').join('');
+    return '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '">' +
+      '<g fill="' + line + '" transform="translate(0 5)">' + base + circles + '</g>' +
+      '<g fill="' + shade + '" stroke="' + line + '" stroke-width="3">' + base + circles + '</g>' +
+      '<g fill="' + fill + '" transform="translate(0 -7)">' + puffs.map(([x, y, rr]) => '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="' + (rr * 0.86).toFixed(1) + '"/>').join('') + '</g></svg>';
+  }
+  function fog(root, ms, opts) {
     if (!root) return;
-    const color = getComputedStyle(root).backgroundColor;
+    opts = opts || {};
+    const dark = S.theme === 'dark';
+    const fill = dark ? '#3A3631' : '#FFFDF7', shade = dark ? '#2B2724' : '#EADFC8', line = dark ? 'rgba(0,0,0,.35)' : 'rgba(22,48,44,.18)';
+    const H = root.clientHeight || 844;
     const el = document.createElement('div');
     el.className = 'fog'; el.setAttribute('aria-hidden', 'true');
-    el.style.setProperty('--fog', color); el.style.setProperty('--fog-t', ms + 'ms');
-    const clouds = [[-60, 40, 300, -170, -60], [180, -30, 320, 170, -90], [40, 260, 360, -190, 30], [220, 330, 340, 190, 60], [90, 520, 380, -150, 120], [-80, 620, 320, 160, 140], [200, 640, 300, 180, 100]];
-    el.innerHTML = '<div class="wash"></div>' + clouds.map(([x, y, w, dx, dy]) =>
-      '<div class="cloud" style="left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + Math.round(w * 0.62) + 'px;--dx:' + dx + 'px;--dy:' + dy + 'px"></div>').join('');
+    el.style.setProperty('--fog-t', ms + 'ms'); el.style.setProperty('--fog-wait', (opts.wait || 350) + 'ms');
+    // two cloud banks that meet in the middle, built from stacked puffs
+    const bank = (side) => {
+      let html = '', seed = side === 'l' ? 7 : 31;
+      for (let y = -60; y < H + 60; y += 92) {
+        const w = 250 + ((seed = (seed * 13 + 7) % 97) % 60), x = side === 'l' ? -40 + (seed % 50) : 70 - (seed % 50);
+        html += '<div style="position:absolute;left:' + x + 'px;top:' + y + 'px">' + cloudSVG(w, fill, shade, line, seed) + '</div>';
+      }
+      return '<div class="bank ' + side + '">' + html + '</div>';
+    };
+    const puffs = [[120, H * 0.18, 150, 'fogUpL'], [170, H * 0.42, 170, 'fogUpR'], [90, H * 0.62, 160, 'fogDnL'], [190, H * 0.8, 150, 'fogDnR']];
+    el.innerHTML = bank('l') + bank('r') + puffs.map(([x, y, w, a], i) =>
+      '<div class="puff" style="left:' + x + 'px;top:' + Math.round(y) + 'px;--anim:' + a + '">' + cloudSVG(w, fill, shade, line, 11 + i * 5) + '</div>').join('');
     root.appendChild(el);
-    if (holdSel) root.querySelectorAll(holdSel).forEach((n) => { n.classList.add('fog-hold'); n.style.setProperty('--fog-d', Math.round(ms * 0.6) + 'ms'); });
-    setTimeout(() => el.remove(), ms + 200);
+    if (!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) setTimeout(() => wind(ms, opts.loud), Math.max(0, (opts.wait || 350) - 150));
+    setTimeout(() => el.remove(), ms + (opts.wait || 350) + 200);
   }
 
   // ---------- per-screen wiring
@@ -775,8 +965,8 @@ body.wide #guide{display:flex}
       if (count) count.textContent = String(Object.keys(S.kit).length);
     },
     'Map-Home'(root) {
-      wireMap(root);
-      if (prevScreen === 'VP-04-Reveal') fog(root, 1500);
+      wireMap(root); liveMap(root);
+      if (prevScreen === 'VP-04-Reveal') fog(root, 1300, { wait: 120, loud: 0.3 });
       if (!arriving() || S.t.cleared) return;
       const cont = byText(root, 'a', /^\s*Continue\s*$/);
       const card = cont && cont.parentElement;
@@ -793,13 +983,14 @@ body.wide #guide{display:flex}
       if (bank) bank.dataset.go = 'VP-17-Cleared';
       const cont = byText(root, 'a', /quest cleared/i);
       if (cont) cont.dataset.go = 'VP-17-Cleared';
+      liveMap(root);
     },
     'VP-04-Reveal'(root) {
       // the map starts fully fogged, then clears to the team's misty edge before the card rises
       const card = byText(root, 'div', /^\s*Your map is ready/);
       if (card) card.classList.add('fog-hold');
-      fog(root, 2600);
-      if (card) { card.style.setProperty('--fog-d', '1500ms'); card.style.zIndex = '7'; }
+      fog(root, 2000, { wait: 450 });
+      if (card) { card.style.setProperty('--fog-d', '1700ms'); card.style.zIndex = '7'; }
     },
     'VP-05-Quest'(root) { stickyBottom(root, root.querySelector('[data-go$="VP-06-Start"]')); linkCompare(root, 'VP-05-Quest'); },
     'VP-15-StepDone'(root) { linkCompare(root, 'VP-15-StepDone'); },
@@ -995,7 +1186,7 @@ body.wide #guide{display:flex}
   }
   function wireMap(root) {
     const avatar = root.querySelector('a[aria-label="Your profile and settings"]');
-    if (avatar) avatar.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); openSettings(); });
+    if (avatar) avatar.dataset.go = 'Me';
     root.querySelectorAll('nav a').forEach((a) => {
       const t = a.textContent.trim();
       if (/grapevine/i.test(t)) a.dataset.go = 'VP-12-Grapevine';
@@ -1091,7 +1282,7 @@ body.wide #guide{display:flex}
 
   applyTheme();
   fit();
-  go(SCREENS[S.screen] || S.screen === 'Banks' || S.screen === 'Inventory' ? S.screen : 'VP-01-Intro');
+  go(SCREENS[S.screen] || S.screen === 'Banks' || S.screen === 'Inventory' || S.screen === 'Me' ? S.screen : 'VP-01-Intro');
 })();
 </script>
 
