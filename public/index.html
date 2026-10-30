@@ -996,10 +996,17 @@ body.wide #guide{display:flex}
   // Every tap: the thing you pressed shrinks a little and the phone gives a tiny buzz (added)
   const hx = document.createElement('label'); hx.id = 'hx'; hx.setAttribute('aria-hidden', 'true');
   hx.innerHTML = '<input type="checkbox" switch tabindex="-1">'; document.body.appendChild(hx);
+  let buzzed = false;
   function haptic() {
-    try { if (navigator.vibrate) { navigator.vibrate(10); return; } } catch (e) {}
-    try { hx.click(); } catch (e) {} // iPhone Safari: a hidden switch toggle gives a light haptic tick on iOS 18+
+    buzzed = false;
+    try { if (navigator.vibrate) { buzzed = navigator.vibrate(30); return; } } catch (e) {}
+    try { hx.click(); buzzed = true; } catch (e) {} // iPhone Safari: a hidden switch toggle gives a light haptic tick on iOS 18+
   }
+  // Android only allows vibration after a real tap, so if the press-down buzz was blocked, buzz on the tap itself
+  shell.addEventListener('click', (e) => {
+    if (buzzed || !e.target.closest(PRESSABLE)) return;
+    try { if (navigator.vibrate) buzzed = navigator.vibrate(30); } catch (err) {}
+  }, true);
   const PRESSABLE = '[data-go],[data-toast],a[href],button,[role="link"],.tap-row,.me-row';
   let pressed = null;
   shell.addEventListener('pointerdown', (e) => {
@@ -1027,13 +1034,16 @@ body.wide #guide{display:flex}
     const hx = hop.offsetLeft + hop.offsetWidth / 2, hy = hop.offsetTop + hop.offsetHeight / 2;
     const cx = count.offsetLeft + count.offsetWidth / 2, cy = count.offsetTop + count.offsetHeight / 2;
     const dx = cx - hx, dy = cy - hy;
-    const into = [
-      { transform: 'translate(0,0) rotate(-12deg) scale(1)', opacity: 1, offset: 0 },
-      { transform: 'translate(2px,4px) rotate(-12deg) scale(1.05,.9)', opacity: 1, offset: 0.12 },
-      { transform: 'translate(' + dx * 0.25 + 'px,-34px) rotate(-30deg) scale(1.1)', opacity: 1, offset: 0.42 },
-      { transform: 'translate(' + dx * 0.8 + 'px,' + dy * 0.6 + 'px) rotate(10deg) scale(.7)', opacity: 1, offset: 0.78 },
-      { transform: 'translate(' + dx + 'px,' + dy + 'px) rotate(20deg) scale(.3)', opacity: 0, offset: 1 }
-    ];
+    // a smooth arc: up and out to the right, then curving down into the number
+    const P0 = [0, 0], P1 = [dx * 0.2 + 46, -70], P2 = [dx + 34, dy - 70], P3 = [dx, dy];
+    const bez = (t, k) => (1 - t) ** 3 * P0[k] + 3 * (1 - t) ** 2 * t * P1[k] + 3 * (1 - t) * t * t * P2[k] + t ** 3 * P3[k];
+    const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
+    const into = [];
+    for (let i = 0; i <= 32; i++) {
+      const o = i / 32, t = ease(o);
+      into.push({ offset: o, opacity: o > 0.9 ? (1 - o) * 10 : 1,
+        transform: 'translate(' + bez(t, 0).toFixed(1) + 'px,' + bez(t, 1).toFixed(1) + 'px) rotate(' + (-12 + 300 * t).toFixed(0) + 'deg) scale(' + (o < 0.15 ? 1 + o : 1.15 - 0.85 * t).toFixed(2) + ')' });
+    }
     const finish = () => {
       hop._anim = null; hop._done = null; done();
       if (safe) safe.parentElement.animate([{ transform: 'rotate(0)' }, { transform: 'rotate(-4deg) translateY(2px)' }, { transform: 'rotate(3deg)' }, { transform: 'rotate(0)' }], { duration: 320, easing: 'ease-out' });
@@ -1042,7 +1052,7 @@ body.wide #guide{display:flex}
     };
     if (!adding) { done(); hop.animate(into.slice().reverse().map((f, i, a) => Object.assign({}, f, { offset: 1 - f.offset, opacity: i === 0 ? 0 : 1 })), { duration: reduce ? 1 : 520, easing: 'cubic-bezier(.3,.6,.4,1)' }); return; }
     hop._done = finish;
-    hop._anim = hop.animate(into, { duration: reduce ? 1 : 640, easing: 'cubic-bezier(.4,0,.6,1)' });
+    hop._anim = hop.animate(into, { duration: reduce ? 1 : 760, easing: 'linear' });
     hop._anim.onfinish = finish;
   }
   function kitFly(root, iconEl, target, adding, done) {
