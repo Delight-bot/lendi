@@ -666,6 +666,7 @@ body.wide #guide{display:flex}
         '<button type="button" class="me-row" data-toast="More languages are coming soon.">Language<span>English' + ARROW + '</span></button>' +
         '<button type="button" class="me-row" data-toast="Notifications are coming soon.">Notifications<span>Off' + ARROW + '</span></button>' +
         '<button type="button" class="me-row" id="me-sound">Sound effects<span>' + (S.sound === false ? 'Off' : 'On') + ARROW + '</span></button>' +
+        '<button type="button" class="me-row" id="me-buzz">Test vibration<span>Tap' + ARROW + '</span></button>' +
       '</section>' +
       '<div style="margin:22px 20px 32px"><button class="btn ghost" type="button" id="me-restart">Restart demo</button></div>' +
       '</div>';
@@ -673,6 +674,14 @@ body.wide #guide{display:flex}
     frame.querySelector('[data-back]').addEventListener('click', () => go(meBack));
     frame.querySelectorAll('[data-t]').forEach((b) => b.addEventListener('click', () => setTheme(b.dataset.t)));
     frame.querySelector('#me-restart').addEventListener('click', restart);
+    frame.querySelector('#me-buzz').addEventListener('click', () => {
+      let ok = null;
+      try { ok = navigator.vibrate ? navigator.vibrate([200, 100, 200]) : null; } catch (e) { ok = false; }
+      const inFrame = window.top !== window.self;
+      toast(ok === null ? 'This browser doesn’t support vibration. Try Chrome or Samsung Internet.'
+        : ok === false ? (inFrame ? 'Vibration is blocked inside this preview. Open the app on its own link.' : 'The browser blocked it. Tap once anywhere, then try again.')
+        : 'Sent two buzzes. Felt nothing? Turn up touch vibration in your phone settings.');
+    });
     frame.querySelector('#me-sound').addEventListener('click', () => { S.sound = S.sound === false; save(); renderMe(); });
   }
 
