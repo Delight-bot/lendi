@@ -22,7 +22,7 @@ function prompts(body) {
         '- noid: they do not have their GSU student ID yet, or it was not accepted\n' +
         '- notrunning: the shuttle is not running on the day they need it\n' +
         '- card: Uber, Lyft or another ride app will not accept their card or payment\n' +
-        '- airport: they need a ride to or from an airport\n' +
+        '- airport: they need a ride to or from an airport, arriving or leaving\n' +
         'Reply with only JSON like {"match":"missed","summary":"You missed the campus shuttle"}. ' +
         'summary restates their problem in under 12 words, addressed to them. Give no advice.\n\n' +
         'Student\'s message: """' + clip(body.text, 600) + '"""'
