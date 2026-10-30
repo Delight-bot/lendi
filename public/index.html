@@ -144,7 +144,15 @@ body.wide.app-dark #shell{box-shadow:0 0 0 10px #2C2925,0 24px 60px rgba(0,0,0,.
 @keyframes fogFade{to{opacity:0}}
 .mv-world{position:absolute;left:0;top:0;width:390px;height:844px;transform-origin:0 0;touch-action:none;cursor:grab;will-change:transform}
 .mv-world.dragging{cursor:grabbing}
-.mv-terrain{position:absolute;left:0;top:0;width:390px;height:844px;transform-origin:0 0;pointer-events:none}
+.mv-world,.mv-world *{user-select:none;-webkit-user-select:none;-webkit-user-drag:none;-webkit-touch-callout:none}
+#shell [data-screen^="Map-"]{overscroll-behavior:none;touch-action:none}
+.mv-world a.mv-sel{outline:4px solid #F2B63D;outline-offset:3px}
+.mv-pre{opacity:0}
+.mv-vig{position:absolute;left:0;right:0;top:0;pointer-events:none;background:linear-gradient(to bottom,var(--vg),transparent) top/100% 38px no-repeat,linear-gradient(to top,var(--vg),transparent) bottom/100% 38px no-repeat,linear-gradient(to right,var(--vg),transparent) left/30px 100% no-repeat,linear-gradient(to left,var(--vg),transparent) right/30px 100% no-repeat}
+.mv-jump{position:absolute;right:14px;width:44px;height:44px;border-radius:99px;border:3px solid #FFFDF7;background:var(--ink);color:var(--bg);display:flex;align-items:center;justify-content:center;padding:0;box-shadow:0 2px 8px rgba(0,0,0,.3);opacity:0;scale:.7;pointer-events:none;transition:opacity .2s,scale .2s}
+.mv-jump.on{opacity:1;scale:1;pointer-events:auto}
+.mv-jump svg{transition:rotate .15s linear}
+.mv-note{font-size:13px;font-weight:800;color:var(--ink2);line-height:1.2}
 .mv-world a[href]{transition:scale .12s}
 .mv-world a[href]:active{scale:.92}
 .mv-bob{animation:mvBob 3.2s ease-in-out infinite}
@@ -587,16 +595,23 @@ body.wide #guide{display:flex}
   }
 
   // ---------- living map: drag to explore, things bob and drift (added; inspired by game maps)
+  // Home map: ONE absolutely positioned layer (art, routes, labels, nodes) moved with translate3d.
+  // Free 2D pan with rubber band and momentum; tap a node to centre it and update the quest card (added)
+  let mapState = null; // pan position and selected quest, kept while you visit a quest and come back
   function liveMap(root) {
     if (!root) return;
     root.style.height = frame.clientHeight + 'px';
     frame.scrollTop = 0;
+    const K = 1.28;
     const fixed = (n) => n.tagName === 'NAV' || /bottom:\s*\d/.test(n.getAttribute('style') || '') ||
       n.matches('a[aria-label="Your profile and settings"], button[aria-label^="Show quests"], .fog') || (n.tagName === 'svg' && n.getAttribute('width') === '0');
     const world = document.createElement('div');
     world.className = 'mv-world';
     [...root.children].filter((n) => !fixed(n)).forEach((n) => world.appendChild(n));
     root.insertBefore(world, root.children[1] || null);
+    const rcs = getComputedStyle(root);
+    world.style.background = rcs.background; world.style.height = '780px';
+    root.style.backgroundImage = 'none';
     // motion
     world.querySelectorAll('a[href]').forEach((a, i) => {
       if (/current quest/i.test(a.getAttribute('aria-label') || '')) a.classList.add('mv-hero');
@@ -640,51 +655,167 @@ body.wide #guide{display:flex}
       });
       a.addEventListener('pointerleave', () => { a.classList.remove('hov'); if (lbl) lbl.classList.remove('hov'); if (tip) { tip.remove(); tip = null; } });
     });
-    // The terrain (land, trees, fog, region names) stays put behind the road. Only the road, stops and labels slide (added)
-    const terrain = document.createElement('div'); terrain.className = 'mv-terrain';
-    const big = world.firstElementChild;
-    if (big && big.tagName.toLowerCase() === 'svg' && big.children.length >= 6) {
-      const roadSvg = big.cloneNode(true);
-      [...big.children].forEach((c) => { if (/CF4520|98,106,100/i.test(c.getAttribute('stroke') || '')) c.remove(); });
-      [...roadSvg.children].forEach((c) => { if (!/CF4520|98,106,100/i.test(c.getAttribute('stroke') || '')) c.remove(); });
-      terrain.appendChild(big); world.insertBefore(roadSvg, world.firstChild);
+    // ---- the quest card follows the selected node
+    const card = [...root.children].find((n) => n.tagName === 'DIV' && /bottom:\s*78px/.test(n.getAttribute('style') || ''));
+    const nodes = [...world.querySelectorAll(':scope > a[href]')];
+    const labels = [...world.querySelectorAll(':scope > .mv-lbl')];
+    const nameOf = (a) => (a.getAttribute('aria-label') || '').split(',')[0].replace(' and ', ' & ');
+    nodes.forEach((a) => a.removeAttribute('data-go')); // taps are handled below, so a drag can never open a quest
+    const iconEl = card && card.querySelector('span[aria-hidden="true"]'), titleEl = card && card.querySelector('span[style*="Baloo"]');
+    const bar = card && card.querySelector('[role="img"]'), btn = card && card.querySelector('a[href]');
+    const barM = bar && /(\d+) of (\d+)/.exec(bar.getAttribute('aria-label') || '');
+    const startDone = barM ? +barM[1] : 0, segs = bar ? bar.children.length : 6;
+    const fillC = bar && bar.firstElementChild ? getComputedStyle(bar.firstElementChild).backgroundColor : '#2E9E4F';
+    const emptyC = bar && bar.lastElementChild ? getComputedStyle(bar.lastElementChild).backgroundColor : '#ECEAE3';
+    const btn0 = btn ? btn.getAttribute('style') : '';
+    let note = null;
+    if (card) {
+      const row = iconEl.parentElement; row.style.minHeight = '66px';
+      note = document.createElement('span'); note.className = 'mv-note'; bar.parentElement.appendChild(note);
     }
-    [...world.children].forEach((n) => {
-      const st = n.getAttribute('style') || '';
-      if ((n.tagName.toLowerCase() === 'svg' && n !== world.firstElementChild) || n.classList.contains('mv-cloud') || (n.tagName === 'SPAN' && /Baloo 2/.test(st))) terrain.appendChild(n);
-    });
-    root.insertBefore(terrain, world);
-    // camera: zoomed in a little so there is room to explore
-    const K = 1.28, vw = 390, vh = root.clientHeight;
-    const minX = vw - 390 * K, minY = Math.min(0, vh - 844 * K);
-    const clamp = (v, lo) => Math.max(lo, Math.min(0, v));
-    const hero = world.querySelector('.mv-hero') || world.querySelector('a[href]');
-    let x = -60, y = -40;
-    if (hero) { const hx = (hero.offsetLeft + hero.offsetWidth / 2) * K, hy = (hero.offsetTop + hero.offsetHeight / 2) * K; x = 195 - hx; y = vh * 0.32 - hy; }
-    x = clamp(x, minX); y = clamp(y, minY);
-    terrain.style.transform = 'translate(' + ((390 - 390 * K) / 2) + 'px,' + Math.min(0, (vh - 844 * K) / 2) + 'px) scale(' + K + ')';
-    const place = () => { world.style.transform = 'translate(' + x + 'px,' + y + 'px) scale(' + K + ')'; };
-    place();
-    let down = null, moved = false, vx = 0, vy = 0, last = 0, raf = 0;
-    const ratio = () => 390 / (root.getBoundingClientRect().width || 390);
-    world.addEventListener('pointerdown', (e) => { cancelAnimationFrame(raf); down = { px: e.clientX, py: e.clientY, x, y }; moved = false; vx = vy = 0; last = performance.now(); });
-    addEventListener('pointermove', (e) => {
-      if (!down) return;
-      const r = ratio(), dx = (e.clientX - down.px) * r, dy = (e.clientY - down.py) * r;
-      if (!moved && Math.hypot(dx, dy) < 6) return;
-      moved = true; world.classList.add('dragging');
-      const nx = clamp(down.x + dx, minX), ny = clamp(down.y + dy, minY), t = performance.now(), dt = Math.max(1, t - last);
-      vx = (nx - x) / dt; vy = (ny - y) / dt; last = t; x = nx; y = ny; place();
-    });
-    const up = () => {
-      if (!down) return; down = null; world.classList.remove('dragging');
-      if (!moved) return;
-      const glide = () => { vx *= 0.92; vy *= 0.92; x = clamp(x + vx * 16, minX); y = clamp(y + vy * 16, minY); place(); if (Math.hypot(vx, vy) > 0.02 && frame.contains(world)) raf = requestAnimationFrame(glide); };
-      raf = requestAnimationFrame(glide);
+    const info = (a) => {
+      const l = a.getAttribute('aria-label') || '', name = nameOf(a);
+      const locked = /locked/i.test(l), cleared = !locked && /cleared/i.test(l), due = /due ([A-Za-z]+ \d+)/i.exec(l);
+      const r = { name, done: 0, label: 'Start quest', go: null, toast: name + ' isn’t in this demo yet.', note: '', locked };
+      if (cleared) {
+        r.done = segs; r.label = 'Quest cleared';
+        r.go = name === 'Banking & Payments' ? 'VP-17-Cleared' : name === 'Transportation' ? 'T-VP-17-Cleared' : null;
+        r.toast = name + ' is already cleared.';
+      } else if (locked) {
+        const u = /locked until (.+?)(?: is cleared)?$/i.exec(l);
+        r.label = 'Locked'; r.toast = r.note = u ? 'Opens when ' + u[1].replace(' and ', ' & ') + ' is done.' : 'Opens after an earlier quest is done.';
+      } else if (name === 'Banking & Payments') { r.done = startDone; r.label = 'Continue'; r.go = 'VP-05-Quest'; }
+      else if (name === 'Transportation') { r.go = 'T-VP-05-Quest'; r.label = S.t.started ? 'Continue' : (arriving() ? 'Book airport pickup' : 'Start quest'); }
+      if (due) r.note = 'Due ' + due[1];
+      return r;
     };
-    addEventListener('pointerup', up); addEventListener('pointercancel', up);
-    world.addEventListener('click', (e) => { if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; } }, true);
-    root.addEventListener('wheel', (e) => { if (!world.contains(e.target)) return; e.preventDefault(); x = clamp(x - e.deltaX, minX); y = clamp(y - e.deltaY, minY); place(); }, { passive: false });
+    let sel = null;
+    const paintCard = (a, anim) => {
+      if (!card) return;
+      const i = info(a), ns = a.querySelector(':scope > svg'), os = iconEl.querySelector('svg');
+      if (ns && os) { const c = ns.cloneNode(true); c.setAttribute('width', os.getAttribute('width')); c.setAttribute('height', os.getAttribute('height')); iconEl.replaceChild(c, os); }
+      titleEl.textContent = i.name;
+      [...bar.children].forEach((c, k) => { c.style.background = k < i.done ? fillC : emptyC; });
+      bar.setAttribute('aria-label', i.done >= segs ? 'Cleared' : i.done ? i.done + ' of ' + segs + ' steps' : 'Not started');
+      note.textContent = i.note; note.style.display = i.note ? '' : 'none';
+      btn.setAttribute('style', btn0); btn.textContent = i.label; btn.removeAttribute('data-go'); btn.removeAttribute('data-toast');
+      if (i.locked) { btn.style.background = 'var(--s2)'; btn.style.boxShadow = 'none'; btn.style.color = 'var(--ink2)'; btn.dataset.toast = i.toast; }
+      else if (i.go) btn.dataset.go = i.go; else btn.dataset.toast = i.toast;
+      if (anim && card.animate) card.animate([{ transform: 'translateY(18px)', opacity: 0.5 }, { transform: 'none', opacity: 1 }], { duration: 280, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    };
+    const mark = (a) => { nodes.forEach((n) => n.classList.toggle('mv-sel', n === a)); sel = a; };
+
+    // ---- camera: one layer, translate3d only
+    const vw = 390, RB = 40, visH = card ? card.offsetTop : root.clientHeight;
+    const minX = vw - 390 * K, minY = visH - 780 * K;
+    const hard = (v, lo) => Math.max(lo, Math.min(0, v));
+    const soft = (v, lo) => (v > 0 ? RB * (1 - Math.exp(-v / 120)) : v < lo ? lo - RB * (1 - Math.exp(-(lo - v) / 120)) : v);
+    const centre = (a) => [hard(vw / 2 - (a.offsetLeft + a.offsetWidth / 2) * K, minX), hard(visH / 2 - (a.offsetTop + a.offsetHeight / 2) * K, minY)];
+    const cur = (arriving() && !S.t.cleared && nodes.find((a) => nameOf(a) === 'Transportation')) ||
+      nodes.find((a) => /current quest/i.test(a.getAttribute('aria-label') || '')) ||
+      nodes.find((a) => !/cleared|locked/i.test(a.getAttribute('aria-label') || '')) || nodes[0];
+    const start = (mapState && nodes.find((a) => nameOf(a) === mapState.sel)) || cur;
+    let x, y;
+    if (mapState) { x = hard(mapState.x, minX); y = hard(mapState.y, minY); } else [x, y] = centre(cur);
+    const jump = document.createElement('button');
+    jump.type = 'button'; jump.className = 'mv-jump'; jump.setAttribute('aria-label', 'Jump to your current quest'); jump.style.top = (visH - 56) + 'px';
+    jump.innerHTML = '<svg width="22" height="22" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z"/></svg>';
+    root.appendChild(jump);
+    const vig = document.createElement('div'); vig.className = 'mv-vig'; vig.style.height = visH + 'px';
+    vig.style.setProperty('--vg', (rcs.backgroundColor || '#F4EEDF').replace(/^rgb\((.*)\)$/, 'rgba($1,.88)'));
+    root.insertBefore(vig, world.nextSibling);
+    const place = () => {
+      world.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0) scale(' + K + ')';
+      mapState = { x, y, sel: sel ? nameOf(sel) : null };
+      const sx = x + (cur.offsetLeft + cur.offsetWidth / 2) * K, sy = y + (cur.offsetTop + cur.offsetHeight / 2) * K;
+      const off = sx < 24 || sx > vw - 24 || sy < 24 || sy > visH - 24;
+      jump.classList.toggle('on', off);
+      if (off) jump.firstElementChild.style.rotate = (Math.atan2(sy - visH / 2, sx - vw / 2) * 180 / Math.PI + 90) + 'deg';
+    };
+    mark(start); paintCard(start, false); place();
+    let down = null, moved = false, vx = 0, vy = 0, lastT = 0, raf = 0;
+    const ratio = () => 390 / (root.getBoundingClientRect().width || 390);
+    const stop = () => { cancelAnimationFrame(raf); raf = 0; };
+    // momentum: friction about 0.95 per frame; past an edge it stretches a little, then springs back
+    const glide = (t0) => {
+      let prev = t0;
+      const step = (t) => {
+        const dt = Math.min(32, t - prev); prev = t; let moving = false;
+        for (const ax of ['x', 'y']) {
+          const lo = ax === 'x' ? minX : minY, v = ax === 'x' ? vx : vy;
+          let p = ax === 'x' ? x : y, nv = v;
+          if (p > 0 || p < lo) { const tgt = p > 0 ? 0 : lo; p += (tgt - p) * (1 - Math.pow(0.001, dt / 220)); nv = 0; if (Math.abs(tgt - p) > 0.3) moving = true; else p = tgt; }
+          else {
+            p += v * dt; nv = v * Math.pow(0.95, dt / 16.67);
+            if (p > 0) { p = Math.min(RB, p * 0.35); nv = 0; } else if (p < lo) { p = lo - Math.min(RB, (lo - p) * 0.35); nv = 0; }
+            if (Math.abs(nv) > 0.02 || p > 0 || p < lo) moving = true;
+          }
+          if (ax === 'x') { x = p; vx = nv; } else { y = p; vy = nv; }
+        }
+        place(); raf = moving ? requestAnimationFrame(step) : 0;
+      };
+      raf = requestAnimationFrame(step);
+    };
+    const panTo = (tx, ty, dur) => {
+      stop(); const x0 = x, y0 = y, t0 = performance.now(); vx = vy = 0;
+      const step = (t) => { const p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3); x = x0 + (tx - x0) * e; y = y0 + (ty - y0) * e; place(); raf = p < 1 ? requestAnimationFrame(step) : 0; };
+      raf = requestAnimationFrame(step);
+    };
+    const select = (a) => {
+      if (tip) { tip.remove(); tip = null; }
+      const [tx, ty] = centre(a); panTo(tx, ty, 400);
+      mark(a); paintCard(a, true); haptic();
+      if (a.animate) a.animate([{ translate: '0 0' }, { translate: '0 -12px' }, { translate: '0 0' }], { duration: 420, easing: 'ease-out' });
+    };
+    jump.addEventListener('click', () => { const [tx, ty] = centre(cur); panTo(tx, ty, 400); });
+    world.addEventListener('pointerdown', (e) => {
+      if (e.button > 0) return;
+      stop(); try { world.setPointerCapture(e.pointerId); } catch (err) {}
+      down = { id: e.pointerId, px: e.clientX, py: e.clientY, x, y, node: e.target.closest && e.target.closest('a[href]') };
+      moved = false; vx = vy = 0; lastT = performance.now();
+    });
+    world.addEventListener('pointermove', (e) => {
+      if (!down || e.pointerId !== down.id) return;
+      const r = ratio();
+      if (!moved) {
+        if (Math.hypot(e.clientX - down.px, e.clientY - down.py) * r < 8) return;
+        moved = true; world.classList.add('dragging'); down.px = e.clientX; down.py = e.clientY; down.x = x; down.y = y;
+        if (tip) { tip.remove(); tip = null; }
+      }
+      const nx = soft(down.x + (e.clientX - down.px) * r, minX), ny = soft(down.y + (e.clientY - down.py) * r, minY), t = performance.now(), dt = Math.max(1, t - lastT);
+      vx = 0.7 * ((nx - x) / dt) + 0.3 * vx; vy = 0.7 * ((ny - y) / dt) + 0.3 * vy; lastT = t; x = nx; y = ny; place();
+    });
+    const up = (e) => {
+      if (!down || e.pointerId !== down.id) return;
+      const d = down; down = null; world.classList.remove('dragging');
+      try { world.releasePointerCapture(e.pointerId); } catch (err) {}
+      if (!moved) { if (e.type === 'pointerup' && d.node) select(d.node); return; }
+      if (performance.now() - lastT > 90) vx = vy = 0;
+      glide(performance.now());
+    };
+    world.addEventListener('pointerup', up); world.addEventListener('pointercancel', up);
+    world.addEventListener('click', (e) => { // taps were handled on pointerup; this covers keyboard "click" only
+      e.preventDefault(); e.stopPropagation();
+      const n = e.target.closest && e.target.closest('a[href]'); if (e.detail === 0 && n) select(n);
+    }, true);
+    // trackpad / wheel: two-finger scroll pans both ways
+    world.addEventListener('wheel', (e) => {
+      e.preventDefault(); stop(); vx = vy = 0;
+      const k = e.deltaMode === 1 ? 16 : 1;
+      x = hard(x - e.deltaX * k, minX); y = hard(y - e.deltaY * k, minY); place();
+    }, { passive: false });
+    // nodes fade and scale in the first time they come into view
+    const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if ('IntersectionObserver' in window && !reduce) {
+      const items = [...nodes, ...labels];
+      items.forEach((n) => n.classList.add('mv-pre'));
+      const io = new IntersectionObserver((es) => es.forEach((en) => {
+        if (!en.isIntersecting) return;
+        io.unobserve(en.target); en.target.classList.remove('mv-pre');
+        if (en.target.animate) en.target.animate([{ opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1 }], { duration: 480, easing: 'cubic-bezier(.3,1.4,.5,1)' });
+      }), { root, threshold: 0.01 });
+      items.forEach((n) => io.observe(n));
+    }
   }
 
   // ---------- Me page (opens from your dot on the map)
@@ -718,7 +849,7 @@ body.wide #guide{display:flex}
         '<button type="button" class="me-row" id="me-buzz">Test vibration<span>Tap' + ARROW + '</span></button>' +
       '</section>' +
       '<div style="margin:22px 20px 32px"><button class="btn ghost" type="button" id="me-restart">Restart demo</button></div>' +
-      '<p class="bk-foot" style="text-align:center;margin:0 0 24px">Build 10-30 08:00 UTC</p>' +
+      '<p class="bk-foot" style="text-align:center;margin:0 0 24px">Build 10-30 09:27 UTC</p>' +
       '</div>';
     frame.scrollTop = 0;
     frame.querySelector('[data-back]').addEventListener('click', () => go(meBack));
@@ -990,7 +1121,7 @@ body.wide #guide{display:flex}
     el.querySelectorAll('[data-t]').forEach((b) => b.addEventListener('click', () => { setTheme(b.dataset.t); openSettings(); }));
     el.querySelector('#set-restart').addEventListener('click', restart);
   }
-  function restart() { const theme = S.theme; S = fresh(); S.theme = theme; save(); applyTheme(); go('VP-01-Intro'); }
+  function restart() { const theme = S.theme; S = fresh(); mapState = null; S.theme = theme; save(); applyTheme(); go('VP-01-Intro'); }
 
   // AI moment 1: describe the problem in your own words
   function openSomethingElse() {
@@ -1345,15 +1476,6 @@ body.wide #guide{display:flex}
     'Map-Home'(root) {
       wireMap(root); liveMap(root);
       if (prevScreen === 'VP-04-Reveal') fog(root, 1400, { wait: 80, density: 0.7 });
-      if (!arriving() || S.t.cleared) return;
-      const cont = byText(root, 'a', /^\s*Continue\s*$/);
-      const card = cont && cont.parentElement;
-      if (!card) return;
-      const use = card.querySelector('use'); if (use) { use.setAttribute('href', '#gi-snail'); use.setAttribute('fill', '#A55A12'); }
-      card.querySelectorAll('span').forEach((n) => { if (n.children.length === 0 && /^Banking & Payments$/.test(n.textContent.trim())) n.textContent = 'Transportation'; });
-      const bar = card.querySelector('[role="img"]');
-      if (bar) { bar.setAttribute('aria-label', 'Not started'); [...bar.children].forEach((c) => { c.style.background = getComputedStyle(bar.lastElementChild).backgroundColor; }); }
-      cont.dataset.go = 'T-VP-05-Quest'; cont.textContent = 'Book airport pickup';
     },
     'Map-Cleared'(root) {
       wireMap(root);
