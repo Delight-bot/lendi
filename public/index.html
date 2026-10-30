@@ -185,7 +185,7 @@ body.wide #guide{display:flex}
   const fresh = () => ({ theme: prefersDark() ? 'dark' : 'light', screen: 'VP-01-Intro', where: 'Just landed',
     kit: { 'Passport': true, 'I-20': true, 'Student ID': true }, started: false, opened: false, cleared: false,
     problem: 'ssn', aiNote: null, myTips: [], helpful: {}, bank: null,
-    t: { started: false, opened: false, cleared: false, problem: 'missed', aiNote: null } });
+    t: { started: false, opened: false, cleared: false, problem: 'missed', aiNote: null, pickup: false, lastStep: null } });
   let S = fresh();
   try { const saved = JSON.parse(localStorage.getItem(KEY) || 'null'); if (saved) { S = Object.assign(fresh(), saved); S.t = Object.assign(fresh().t, saved.t || {}); } } catch (e) {}
   // which quest a screen belongs to: 'T-' screens are Transportation
@@ -282,6 +282,10 @@ body.wide #guide{display:flex}
     { label: 'Lincoln Parish: public transit', url: 'https://www.lincolnparish.gov/node/2939' }
   ];
   const probs = () => (inT() ? T_PROBLEMS : PROBLEMS);
+  // "Still at home": Transportation leads with booking the airport pickup until it's booked
+  const athome = () => /still at home/i.test(S.where || '');
+  const arriving = () => athome() && !S.t.pickup;
+  const setText = (root, sel, re, text) => { const n = byText(root, sel, re); if (n) n.textContent = text; return n; };
 
   // Banks near Grambling State. Addresses from each bank's location listing; requirements only where the bank publishes them.
   // "used" counts are example data until real students complete the step.
@@ -660,9 +664,14 @@ body.wide #guide{display:flex}
     'VP-02-Where'(root) {
       const opts = [...root.querySelectorAll('button')];
       const bubble = opts[1] && opts[1].nextElementSibling;
+      const words = bubble && bubble.lastElementChild, landed = words && words.textContent;
       radioGroup(opts, (b) => {
         S.where = b.textContent.trim(); save();
-        if (bubble) bubble.hidden = !/just landed/i.test(S.where);
+        if (!bubble) return;
+        const home = /still at home/i.test(S.where);
+        bubble.hidden = !home && !/just landed/i.test(S.where);
+        if (words) words.textContent = home ? 'Safe travels! First up: booking your ride from the airport to campus.' : landed;
+        b.after(bubble);
       });
       const pick = opts.find((b) => b.textContent.trim() === S.where);
       if (pick && pick.getAttribute('aria-pressed') !== 'true') pick.click();
@@ -678,7 +687,18 @@ body.wide #guide{display:flex}
       items.forEach((b) => { const want = !!S.kit[b.textContent.trim()]; if ((b.getAttribute('aria-pressed') === 'true') !== want) b._set(want); });
       if (count) count.textContent = String(Object.keys(S.kit).length);
     },
-    'Map-Home'(root) { wireMap(root); },
+    'Map-Home'(root) {
+      wireMap(root);
+      if (!arriving() || S.t.cleared) return;
+      const cont = byText(root, 'a', /^\s*Continue\s*$/);
+      const card = cont && cont.parentElement;
+      if (!card) return;
+      const use = card.querySelector('use'); if (use) { use.setAttribute('href', '#gi-snail'); use.setAttribute('fill', '#A55A12'); }
+      card.querySelectorAll('span').forEach((n) => { if (n.children.length === 0 && /^Banking & Payments$/.test(n.textContent.trim())) n.textContent = 'Transportation'; });
+      const bar = card.querySelector('[role="img"]');
+      if (bar) { bar.setAttribute('aria-label', 'Not started'); [...bar.children].forEach((c) => { c.style.background = getComputedStyle(bar.lastElementChild).backgroundColor; }); }
+      cont.dataset.go = 'T-VP-05-Quest'; cont.textContent = 'Book airport pickup';
+    },
     'Map-Cleared'(root) {
       wireMap(root);
       const bank = root.querySelector('a[aria-label^="Banking and Payments"]');
@@ -688,10 +708,51 @@ body.wide #guide{display:flex}
     },
     'VP-05-Quest'(root) { stickyBottom(root, root.querySelector('[data-go$="VP-06-Start"]')); linkCompare(root, 'VP-05-Quest'); },
     'VP-15-StepDone'(root) { linkCompare(root, 'VP-15-StepDone'); },
+    'T-VP-05-Quest'(root) {
+      SETUP['VP-05-Quest'](root);
+      if (!arriving()) return;
+      setText(root, 'li span, li', /^\s*Find where you need to go\s*$/, 'Book your airport pickup');
+      setText(root, 'p, span, div', /^Grambling is small and spread out/, 'First, get from the airport to campus. GSU picks students up at the start of term. Book before you fly.');
+    },
+    'T-VP-07-Progress'(root) {
+      if (!arriving()) return;
+      const done = byText(root, 'a', /Steps 1 to 3 done/); if (done) done.style.display = 'none';
+      const bar = root.querySelector('[role="img"][aria-label$="steps done"]');
+      if (bar) { bar.setAttribute('aria-label', '0 of 6 steps done'); if (bar.firstElementChild) bar.firstElementChild.style.width = '3%'; }
+      setText(root, 'span', /^\s*3 of 6 steps\s*$/, '0 of 6 steps');
+      const up = root.querySelector('a[data-go="T-VP-08-Step"]');
+      if (up) {
+        setText(up, 'span', /^Today's boss/, 'Today\'s boss: getting here.');
+        setText(up, 'span', /^Ride the shuttle$/, 'Book your airport pickup');
+        setText(up, 'span', /^Tue, Wed or Thu/, 'Before you fly');
+      }
+    },
+    'T-VP-16-Item'(root) {
+      // the earned item's badge: a bus for the shuttle schedule, a plane for the airport pickup
+      const glyph = root.querySelector('svg[width="54"][viewBox="0 0 256 256"] path');
+      if (glyph) glyph.setAttribute('d', S.t.lastStep === 'airport' ? 'M185.33,114.21l29.14-27.42.17-.17a32,32,0,0,0-45.26-45.26c0,.06-.11.11-.17.17L141.79,70.67l-83-30.2a8,8,0,0,0-8.39,1.86l-24,24a8,8,0,0,0,1.22,12.31l63.89,42.59L76.69,136H56a8,8,0,0,0-5.65,2.34l-24,24A8,8,0,0,0,29,175.42l36.82,14.73,14.7,36.75.06.16a8,8,0,0,0,13.18,2.47l23.87-23.88A8,8,0,0,0,120,200V179.31l14.76-14.76,42.59,63.89a8,8,0,0,0,12.31,1.22l24-24a8,8,0,0,0,1.86-8.39Zm-.07,97.23-42.59-63.88A8,8,0,0,0,136.8,144c-.27,0-.53,0-.79,0a8,8,0,0,0-5.66,2.35l-24,24A8,8,0,0,0,104,176v20.69L90.93,209.76,79.43,181A8,8,0,0,0,75,176.57l-28.74-11.5L59.32,152H80a8,8,0,0,0,5.66-2.34l24-24a8,8,0,0,0-1.22-12.32L44.56,70.74l13.5-13.49,83.22,30.26a8,8,0,0,0,8.56-2L180.78,52.6A16,16,0,0,1,203.4,75.23l-32.87,30.93a8,8,0,0,0-2,8.56l30.26,83.22Z' : 'M184,32H72A32,32,0,0,0,40,64V208a16,16,0,0,0,16,16H80a16,16,0,0,0,16-16V192h64v16a16,16,0,0,0,16,16h24a16,16,0,0,0,16-16V64A32,32,0,0,0,184,32ZM56,176V120H200v56Zm0-96H200v24H56ZM72,48H184a16,16,0,0,1,16,16H56A16,16,0,0,1,72,48Zm8,160H56V192H80Zm96,0V192h24v16Zm-72-60a12,12,0,1,1-12-12A12,12,0,0,1,104,148Zm72,0a12,12,0,1,1-12-12A12,12,0,0,1,176,148Zm72-68v24a8,8,0,0,1-16,0V80a8,8,0,0,1,16,0ZM24,80v24a8,8,0,0,1-16,0V80a8,8,0,0,1,16,0Z');
+      if (S.t.lastStep !== 'airport') return;
+      root.querySelectorAll('*').forEach((n) => { if (n.children.length === 0 && /^\s*Ride the shuttle\s*$/.test(n.textContent)) n.textContent = 'Book your airport pickup'; });
+      root.querySelectorAll('*').forEach((n) => { if (n.children.length === 0 && /^\s*Shuttle schedule\s*$/.test(n.textContent)) n.textContent = 'Airport pickup'; });
+      const next = root.querySelector('a[data-go="T-VP-17-Cleared"]');
+      if (next) { next.dataset.go = 'T-VP-07-Progress'; setText(next, 'span', /^\s*Set up a ride app\s*$/, 'Ride the shuttle'); }
+      const undo = byText(root, 'a', /^\s*Undo\s*$/);
+      if (undo) undo.dataset.go = 'T-VP-08-Step';
+    },
     'VP-08-Step'(root) {
       stickyBottom(root, root.querySelector('[data-go$="VP-09-Stuck"]'));
       if (inT()) {
-        // official sources open the real pages
+        if (arriving()) {
+          root.querySelectorAll('*').forEach((n) => { if (n.children.length === 0 && /^\s*Ride the shuttle\s*$/.test(n.textContent)) n.textContent = 'Book your airport pickup'; });
+          setText(root, 'span', /^\s*Tue to Thu from campus\s*$/, 'Before you fly');
+          const lis = [...root.querySelectorAll('ol li')];
+          const steps = ['Request a pickup with GSU’s Airport Shuttle Form.',
+            'Call (318) 274-2079 to confirm the airport and where to meet the driver.',
+            'Going home for break later? Use the Winter Break Departure Form.'];
+          lis.forEach((li, i) => { if (steps[i]) li.lastChild.textContent = steps[i]; });
+          setText(root, 'span', /^Pickup spot: ask when you book$/, 'Ask where to meet the driver when you call');
+          setText(root, 'a', /^\s*I made the trip\s*$/, 'I booked it');
+        }
         T_SOURCES.forEach((src) => {
           const el = byText(root, 'span,div,a,p', new RegExp('^\\s*' + src.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*$'));
           if (!el) return;
@@ -702,9 +763,9 @@ body.wide #guide{display:flex}
           row.addEventListener('keydown', (e) => { if (e.key === 'Enter') open(); });
         });
         const notes = root.querySelector('button[aria-label^="Notes"]');
-        if (notes) notes.dataset.toast = 'Notes: “Ask where to wait, and when the last ride back leaves.”';
+        if (notes) notes.dataset.toast = arriving() ? 'Notes: “Keep the office number with your boarding pass.”' : 'Notes: “Ask where to wait, and when the last ride back leaves.”';
         // step 1 and the contact card open GSU's booking page; Call dials the office
-        const li = byText(root, 'li', /request form/i);
+        const li = byText(root, 'li', /form\./i);
         if (li) {
           li.classList.add('tap-row'); li.setAttribute('role', 'link'); li.tabIndex = 0;
           const tail = document.createElement('span');
@@ -724,7 +785,7 @@ body.wide #guide{display:flex}
         const card = byText(root, 'div', /^GSU Office of Transportation/);
         const box = card && card.parentElement;
         if (box) {
-          toLink(byText(box, 'button', /directions/i), T_FORMS, 'Book a seat', CAL);
+          toLink(byText(box, 'button', /directions/i), T_FORMS, arriving() ? 'Book pickup' : 'Book a seat', CAL);
           toLink(byText(box, 'button', /^\s*call\s*$/i), 'tel:+13182742079', 'Call');
         }
         return;
@@ -880,6 +941,8 @@ body.wide #guide{display:flex}
       else if (/us number/i.test(t)) S.problem = 'number';
       else if (/fees/i.test(t)) S.problem = 'fees';
     }
+    if (fromId === 'T-VP-08-Step' && target === 'T-VP-16-Item') { S.t.lastStep = arriving() ? 'airport' : 'shuttle'; if (arriving()) S.t.pickup = true; }
+    if (fromId === 'T-VP-16-Item' && target === 'T-VP-08-Step' && S.t.lastStep === 'airport') S.t.pickup = false;
     const to = base(target), tq = isT(target) ? S.t : (target === 'Map-Home' || target === 'Banks' ? q : S);
     if (to === 'VP-07-Progress' && from === 'VP-06-Start') tq.started = true;
     if (to === 'VP-16-Item') tq.opened = true;
