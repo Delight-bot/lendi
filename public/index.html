@@ -180,6 +180,21 @@ body.wide.app-dark #shell{box-shadow:0 0 0 10px #2C2925,0 24px 60px rgba(0,0,0,.
 @keyframes pkReady{0%,100%{translate:0 0}50%{translate:0 -3px}}
 .me-dot{display:flex!important;align-items:center;justify-content:center;color:#16302C}
 @media (prefers-reduced-motion:reduce){.pk-in,.pk-pop,.pk-badge,.pk-bump,.pk-ready{animation:none}}
+#frame [data-go],#frame [data-toast],#frame a[href],#frame button{cursor:pointer}
+.mv-world a[href]{transition:scale .18s cubic-bezier(.3,1.6,.5,1),filter .18s}
+.mv-world a.hov{scale:1.14;filter:drop-shadow(0 0 7px rgba(242,182,61,.95)) drop-shadow(0 0 2px #F2B63D);z-index:3}
+.mv-world a.hov.mv-locked{scale:1.04;filter:none;animation:mvNope .35s}
+.mv-world .mv-lbl{transition:scale .18s cubic-bezier(.3,1.6,.5,1),translate .18s}
+.mv-world .mv-lbl.hov{scale:1.12;translate:0 4px;z-index:3}
+.mv-tip{position:absolute;z-index:8;pointer-events:none;transform:translate(-50%,-100%);padding:8px 12px;border-radius:14px;background:var(--ink);color:var(--bg);font:800 13px/1.25 var(--body);white-space:nowrap;box-shadow:0 3px 0 rgba(0,0,0,.25);animation:mvTip .18s cubic-bezier(.3,1.6,.5,1)}
+.mv-tip::after{content:"";position:absolute;left:calc(50% + var(--ax,0px));bottom:-6px;width:12px;height:12px;background:var(--ink);transform:translateX(-50%) rotate(45deg);border-radius:2px}
+.mv-tip b{display:block;color:var(--gold);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+@keyframes mvTip{from{opacity:0;scale:.7}}
+@keyframes mvNope{25%{rotate:-8deg}75%{rotate:8deg}}
+@media (hover:hover){
+  #frame a[data-go]:not(.mv-world a):hover,#frame button:not([disabled]):hover,#frame .me-stat:hover{filter:brightness(1.04);translate:0 -2px;transition:translate .15s,filter .15s}
+  #frame a[data-go]:not(.mv-world a):active,#frame button:active{translate:0 1px}
+}
 .tap-row{cursor:pointer;border-radius:12px}
 .tap-row:hover{background:var(--s2)}
 
@@ -560,6 +575,32 @@ body.wide #guide{display:flex}
       const c = document.createElement('span'); c.className = 'mv-cloud';
       c.style.cssText += ';top:' + top + 'px;left:0;width:' + w * 2.2 + 'px;height:' + w + 'px;background:' + (dark ? 'rgba(255,255,255,.07)' : 'rgba(255,253,247,.75)') + ';animation-duration:' + dur + 's;animation-delay:-' + (i * 11) + 's';
       world.appendChild(c);
+    });
+    // hover like a game map: the token lifts and glows, its label pops, and a tip says what tapping does
+    const tipFor = (a) => {
+      const l = a.getAttribute('aria-label') || '', name = l.split(',')[0].replace(' and ', ' & ');
+      const state = /locked/i.test(l) ? ['Locked', (l.split(',').slice(1).join(',').trim().replace(/^locked /i, '') || 'Not open yet').replace(/^until /, 'Opens when ').replace(' and ', ' & ').replace(' is cleared', ' is done')] :
+        /cleared/i.test(l) ? ['Cleared', 'Tap to see what you earned'] : /current quest/i.test(l) ? ['Current quest', 'Tap to continue'] : /due/i.test(l) ? ['Due ' + l.split('due ')[1], 'Tap to start'] : ['Open', 'Tap to start'];
+      return '<b>' + esc(state[0]) + '</b>' + esc(name) + '<br><span style="font-weight:700;opacity:.8">' + esc(state[1]) + '</span>';
+    };
+    let tip = null;
+    world.querySelectorAll('a[href]').forEach((a) => {
+      if (/locked/i.test(a.getAttribute('aria-label') || '')) a.classList.add('mv-locked');
+      const lbl = a.nextElementSibling && a.nextElementSibling.tagName === 'DIV' ? a.nextElementSibling : null;
+      if (lbl) lbl.classList.add('mv-lbl');
+      a.addEventListener('pointerenter', (e) => {
+        if (e.pointerType === 'touch' || down) return;
+        a.classList.add('hov'); if (lbl) lbl.classList.add('hov');
+        tip = document.createElement('div'); tip.className = 'mv-tip'; tip.innerHTML = tipFor(a);
+        tip.style.left = (a.offsetLeft + a.offsetWidth / 2) + 'px'; tip.style.top = (a.offsetTop - 12) + 'px';
+        world.appendChild(tip);
+        // keep the tip on screen
+        const rr = root.getBoundingClientRect(), tr = tip.getBoundingClientRect(), z = 390 / (rr.width || 390);
+        const over = Math.max(0, tr.right - rr.right + 8) - Math.max(0, rr.left + 8 - tr.left);
+        if (over) { tip.style.left = (parseFloat(tip.style.left) - over * z / K) + 'px'; tip.style.setProperty('--ax', (over * z / K) + 'px'); }
+        if (/locked/i.test(a.getAttribute('aria-label') || '')) { a.style.animation = 'none'; void a.offsetWidth; a.style.animation = ''; }
+      });
+      a.addEventListener('pointerleave', () => { a.classList.remove('hov'); if (lbl) lbl.classList.remove('hov'); if (tip) { tip.remove(); tip = null; } });
     });
     // camera: zoomed in a little so there is room to explore
     const K = 1.28, vw = 390, vh = root.clientHeight;
