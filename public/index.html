@@ -615,7 +615,7 @@ body.wide #guide{display:flex}
     // motion
     world.querySelectorAll('a[href]').forEach((a, i) => {
       if (/current quest/i.test(a.getAttribute('aria-label') || '')) a.classList.add('mv-hero');
-      else if (!/locked/i.test(a.getAttribute('aria-label') || '')) { a.classList.add('mv-bob'); a.style.animationDelay = (i * 0.37 % 2.4) + 's'; }
+      else if (!/\blocked/i.test(a.getAttribute('aria-label') || '')) { a.classList.add('mv-bob'); a.style.animationDelay = (i * 0.37 % 2.4) + 's'; }
     });
     world.querySelectorAll('svg use[href="#gi-galleon"], svg use[href="#gi-sea-dragon"], svg use[href="#gi-windmill"], svg use[href="#gi-lighthouse"]').forEach((u, i) => {
       const svg = u.closest('svg'); svg.classList.add('mv-rock'); svg.style.animationDelay = (i * 0.9) + 's';
@@ -632,13 +632,13 @@ body.wide #guide{display:flex}
     // hover like a game map: the token lifts and glows, its label pops, and a tip says what tapping does
     const tipFor = (a) => {
       const l = a.getAttribute('aria-label') || '', name = l.split(',')[0].replace(' and ', ' & ');
-      const state = /locked/i.test(l) ? ['Locked', (l.split(',').slice(1).join(',').trim().replace(/^locked /i, '') || 'Not open yet').replace(/^until /, 'Opens when ').replace(' and ', ' & ').replace(' is cleared', ' is done')] :
+      const state = /\blocked/i.test(l) ? ['Locked', (l.split(',').slice(1).join(',').trim().replace(/^locked /i, '') || 'Not open yet').replace(/^until /, 'Opens when ').replace(' and ', ' & ').replace(' is cleared', ' is done')] :
         /cleared/i.test(l) ? ['Cleared', 'Tap to see what you earned'] : /current quest/i.test(l) ? ['Current quest', 'Tap to continue'] : /due/i.test(l) ? ['Due ' + l.split('due ')[1], 'Tap to start'] : ['Open', 'Tap to start'];
       return '<b>' + esc(state[0]) + '</b>' + esc(name) + '<br><span style="font-weight:700;opacity:.8">' + esc(state[1]) + '</span>';
     };
     let tip = null;
     world.querySelectorAll('a[href]').forEach((a) => {
-      if (/locked/i.test(a.getAttribute('aria-label') || '')) a.classList.add('mv-locked');
+      if (/\blocked/i.test(a.getAttribute('aria-label') || '')) a.classList.add('mv-locked');
       const lbl = a.nextElementSibling && a.nextElementSibling.tagName === 'DIV' ? a.nextElementSibling : null;
       if (lbl) lbl.classList.add('mv-lbl');
       a.addEventListener('pointerenter', (e) => {
@@ -651,7 +651,7 @@ body.wide #guide{display:flex}
         const rr = root.getBoundingClientRect(), tr = tip.getBoundingClientRect(), z = 390 / (rr.width || 390);
         const over = Math.max(0, tr.right - rr.right + 8) - Math.max(0, rr.left + 8 - tr.left);
         if (over) { tip.style.left = (parseFloat(tip.style.left) - over * z / K) + 'px'; tip.style.setProperty('--ax', (over * z / K) + 'px'); }
-        if (/locked/i.test(a.getAttribute('aria-label') || '')) { a.style.animation = 'none'; void a.offsetWidth; a.style.animation = ''; }
+        if (/\blocked/i.test(a.getAttribute('aria-label') || '')) { a.style.animation = 'none'; void a.offsetWidth; a.style.animation = ''; }
       });
       a.addEventListener('pointerleave', () => { a.classList.remove('hov'); if (lbl) lbl.classList.remove('hov'); if (tip) { tip.remove(); tip = null; } });
     });
@@ -675,14 +675,14 @@ body.wide #guide{display:flex}
     }
     const info = (a) => {
       const l = a.getAttribute('aria-label') || '', name = nameOf(a);
-      const locked = /locked/i.test(l), cleared = !locked && /cleared/i.test(l), due = /due ([A-Za-z]+ \d+)/i.exec(l);
+      const locked = /\blocked/i.test(l), cleared = !locked && /cleared/i.test(l), due = /due ([A-Za-z]+ \d+)/i.exec(l);
       const r = { name, done: 0, label: 'Start quest', go: null, toast: name + ' isn’t in this demo yet.', note: '', locked };
       if (cleared) {
         r.done = segs; r.label = 'Quest cleared';
         r.go = name === 'Banking & Payments' ? 'VP-17-Cleared' : name === 'Transportation' ? 'T-VP-17-Cleared' : null;
         r.toast = name + ' is already cleared.';
       } else if (locked) {
-        const u = /locked until (.+?)(?: is cleared)?$/i.exec(l);
+        const u = /\blocked until (.+?)(?: is cleared)?$/i.exec(l);
         r.label = 'Locked'; r.toast = r.note = u ? 'Opens when ' + u[1].replace(' and ', ' & ') + ' is done.' : 'Opens after an earlier quest is done.';
       } else if (name === 'Banking & Payments') { r.done = startDone; r.label = 'Continue'; r.go = 'VP-05-Quest'; }
       else if (name === 'Transportation') { r.go = 'T-VP-05-Quest'; r.label = S.t.started ? 'Continue' : (arriving() ? 'Book airport pickup' : 'Start quest'); }
@@ -713,7 +713,7 @@ body.wide #guide{display:flex}
     const centre = (a) => [hard(vw / 2 - (a.offsetLeft + a.offsetWidth / 2) * K, minX), hard(visH / 2 - (a.offsetTop + a.offsetHeight / 2) * K, minY)];
     const cur = (arriving() && !S.t.cleared && nodes.find((a) => nameOf(a) === 'Transportation')) ||
       nodes.find((a) => /current quest/i.test(a.getAttribute('aria-label') || '')) ||
-      nodes.find((a) => !/cleared|locked/i.test(a.getAttribute('aria-label') || '')) || nodes[0];
+      nodes.find((a) => !/cleared|\blocked/i.test(a.getAttribute('aria-label') || '')) || nodes[0];
     const start = (mapState && nodes.find((a) => nameOf(a) === mapState.sel)) || cur;
     let x, y;
     if (mapState) { x = hard(mapState.x, minX); y = hard(mapState.y, minY); } else [x, y] = centre(cur);
@@ -849,7 +849,7 @@ body.wide #guide{display:flex}
         '<button type="button" class="me-row" id="me-buzz">Test vibration<span>Tap' + ARROW + '</span></button>' +
       '</section>' +
       '<div style="margin:22px 20px 32px"><button class="btn ghost" type="button" id="me-restart">Restart demo</button></div>' +
-      '<p class="bk-foot" style="text-align:center;margin:0 0 24px">Build 10-30 09:27 UTC</p>' +
+      '<p class="bk-foot" style="text-align:center;margin:0 0 24px">Build 10-30 09:28 UTC</p>' +
       '</div>';
     frame.scrollTop = 0;
     frame.querySelector('[data-back]').addEventListener('click', () => go(meBack));
